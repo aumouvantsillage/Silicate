@@ -20,14 +20,15 @@
     ; Define a constant signal with value x0.
     ; For a constant signal s, (second s) will return s itself.
     [(signal x0)
-     (letrec ([r (list x0 (lambda () r))]) r)]
-    ; Define a signal with an initial sample x0 and an expression xs
+     (letrec ([s (list x0 (lambda () s))]) s)]
+    ; Define a signal with an initial sample x0 and an expression expr
     ; that compute a signal with the following samples.
-    [(signal x0 xs)
+    ; The expression will be wrapped into a memoized lambda.
+    [(signal x0 expr)
      (list x0
            (let ([m (void)])
              (lambda ()
-               (cond [(void? m) (set! m xs)])
+               (cond [(void? m) (set! m expr)])
                m)))]))
 
 ; Getting the rest of a signal consists in evaluating
@@ -48,7 +49,7 @@
 ;       (apply f (map first xss))
 ;       (apply signal-map f (map signal-rest xss))))
 
-; Transform f into a combinatorial component.
+; Lift f into a function from signals to signal.
 ; This is a macro because f is not always a function.
 (define-syntax-rule (comb f xs ...)
   (letrec ([f/comb (lambda (xs ...)
@@ -57,7 +58,8 @@
                          (f/comb (signal-rest xs) ...)))])
           f/comb))
 
-; Versions of standard functions as combinatorial components.
+; Versions of standard functions and special forms
+; that work on signals.
 (define if/comb     (comb if cs xs ys))
 (define add1/comb   (comb add1 xs))
 (define sub1/comb   (comb sub1 xs))
@@ -79,24 +81,28 @@
 (define-syntax-rule (register x0 es xs)
   (feedback/last x0 (if/comb es xs)))
 
-; TODO Medvedev, Moore, Mealy
-
-; Transform a plain function into a medvedev machine on signals.
+; Transform a plain function into a Medvedev machine.
 ; medvedev :: s -> (s -> i -> s) -> (Signal i -> Signal s)
-(define-syntax-rule (medvedev x0 f)
+(define (medvedev s0 f)
   (let ([f/comb (comb f ss is)])
     (lambda (xs)
-      (feedback/first x0 (f/comb xs)))))
+      (feedback/first s0 (f/comb xs)))))
 
-; Transform a plain function into a mealy machine on signals.
+; Transform a plain function into a Mealy machine.
 ; mealy :: s -> (s -> i -> (s, o)) -> (Signal i -> Signal o)
 ; TODO use values instead of lists?
-(define (mealy x0 f)
-  (let ([f/comb (comb f ss is)])
+(define (mealy s0 f)
+  (let ([f/comb (comb f ss xs)])
     (lambda (xs)
-      (letrec ([ss  (signal x0 (first/comb sos))]
+      (letrec ([ss  (signal s0 (first/comb sos))]
                [sos (f/comb ss xs)])
               (second/comb sos)))))
+
+(define (moore s0 f g)
+  (let ([f/mdv (medvedev s0 f)]
+        [g/comb (comb g ss)])
+    (lambda (xs)
+      (g/comb (f/mdv xs)))))
 
 ; Example: a constant signal with value 42
 (define a (signal 42))

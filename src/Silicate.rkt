@@ -25,10 +25,10 @@
     ; that compute a signal with the following samples.
     [(signal x0 xs)
      (list x0
-           (let ([m empty])
+           (let ([m (void)])
              (lambda ()
-               (cond [(empty? m) (set! m (list xs))])
-               (first m))))]))
+               (cond [(void? m) (set! m xs)])
+               m)))]))
 
 ; Getting the rest of a signal consists in evaluating
 ; the second element of the signal object.
@@ -48,28 +48,59 @@
 ;       (apply f (map first xss))
 ;       (apply signal-map f (map signal-rest xss))))
 
-; Transform f into a combinatorial component with the given name.
-(define-syntax-rule (define-comb (name xs ...) f)
-  (define (name xs ...)
-    (signal
-        (f (first xs) ...)
-        (name (signal-rest xs) ...))))
+; Transform f into a combinatorial component.
+; This is a macro because f is not always a function.
+(define-syntax-rule (comb f xs ...)
+  (letrec ([f/comb (lambda (xs ...)
+                     (signal
+                         (f (first xs) ...)
+                         (f/comb (signal-rest xs) ...)))])
+          f/comb))
 
 ; Versions of standard functions as combinatorial components.
-(define-comb (if/comb cs xs ys) if)
-(define-comb (add1/comb  xs)    add1)
-(define-comb (sub1/comb  xs)    sub1)
-(define-comb (=/comb     xs ys) =)
+(define if/comb     (comb if cs xs ys))
+(define add1/comb   (comb add1 xs))
+(define sub1/comb   (comb sub1 xs))
+(define =/comb      (comb = xs ys))
+(define first/comb  (comb first xs))
+(define second/comb (comb second xs))
+
+; Create a signal that is the result of f
+; and insert it as the first argument of f before xs.
+(define-syntax-rule (feedback/first x0 (f xs ...))
+  (letrec ([ss (signal x0 (f ss xs ...))]) ss))
+
+; Create a signal that is the result of f
+; and append it as the last argument of f after xs.
+(define-syntax-rule (feedback/last x0 (f xs ...))
+  (letrec ([ss (signal x0 (f xs ... ss))]) ss))
 
 ; Register signal xs with es as the enable input.
 (define-syntax-rule (register x0 es xs)
-  (letrec ([rs (signal x0 (if/comb es xs rs))]) rs))
+  (feedback/last x0 (if/comb es xs)))
 
 ; TODO Medvedev, Moore, Mealy
 
+; Transform a plain function into a medvedev machine on signals.
+; medvedev :: s -> (s -> i -> s) -> (Signal i -> Signal s)
+(define-syntax-rule (medvedev x0 f)
+  (let ([f/comb (comb f ss is)])
+    (lambda (xs)
+      (feedback/first x0 (f/comb xs)))))
+
+; Transform a plain function into a mealy machine on signals.
+; mealy :: s -> (s -> i -> (s, o)) -> (Signal i -> Signal o)
+; TODO use values instead of lists?
+(define (mealy x0 f)
+  (let ([f/comb (comb f ss is)])
+    (lambda (xs)
+      (letrec ([ss  (signal x0 (first/comb sos))]
+               [sos (f/comb ss xs)])
+              (second/comb sos)))))
+
 ; Example: a constant signal with value 42
 (define a (signal 42))
-(sample-n 240 a)
+(sample-n 24 a)
 
 ; Example: a mod-5 counter.
 (define counter1
@@ -80,7 +111,7 @@
 (define tick1
     (=/comb counter1 (signal 4)))
 
-(sample-n 240 counter1)
+(sample-n 24 counter1)
 
 ; Example: a mod-3 counter driven by counter1
 (define counter2
@@ -89,4 +120,18 @@
           (signal 0)
           (add1/comb counter2))))
 
-(sample-n 240 counter2)
+(sample-n 24 counter2)
+
+; Example: a counter defined as a medvedev machine
+(define counter3
+    ((medvedev 0 (lambda (n e)
+                  (if e (add1 n) n))) tick1))
+
+(sample-n 24 counter3)
+
+; Example: pulse generator as a mealy machine
+(define pulse
+    ((mealy 0 (lambda (n e)
+                (if e (list (add1 n) (= n 2)) (list n #f)))) tick1))
+
+(sample-n 24 pulse)

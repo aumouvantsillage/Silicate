@@ -4,10 +4,11 @@
 ;
 ; In Silicate, a signal is defined as a pair (x0 . f) where
 ; - x0 is the first, or current sample
-; - f  is a function that computes a signal with the following samples.
+; - f  is a function that computes a signal with the next samples.
 ;
-; The second rule defines a signal as an initial value x0 and and expression
-; expr that computes another signal. expr is wrapped in a lambda to make f.
+; The second rule below defines a signal using an initial value x0 and an
+; expression expr that computes another signal.
+; expr is wrapped in a lambda to make f.
 ;
 ; For circuits with a feedback loop, computing the n-th sample will
 ; execute the n-th function, that will call the (n-1)-th function
@@ -34,8 +35,7 @@
 ; Alias the car function to read the first sample of a signal.
 (define head car)
 
-; Getting the tail of a signal consists in evaluating
-; the right part of the pair.
+; Getting the tail of a signal consists in evaluating the right part of the pair.
 (define (tail s)
   ((cdr s)))
 
@@ -59,7 +59,7 @@
     ; Lift a function with a possibly variable number of arguments.
     [(lift f)
      (lambda x (apply map~ f x))]
-    ; Lift a function, macro or special form with a known arity.
+    ; Lift a function, macro or special form that has a known arity.
     ; This should be more efficient than map~.
     [(lift f s ...)
      (letrec ([f~ (lambda (s ...)
@@ -79,16 +79,16 @@
 (define =~      (lift =))
 
 ; Create a signal that is the result of f
-; and insert it as the first argument of f before s.
+; and insert it as the first argument of f.
 (define-syntax-rule (feedback-first y0 (f x ...))
   (letrec ([y (signal y0 (f y x ...))]) y))
 
 ; Create a signal that is the result of f
-; and append it as the last argument of f after s.
+; and append it as the last argument of f.
 (define-syntax-rule (feedback-last y0 (f x ...))
   (letrec ([y (signal y0 (f x ... y))]) y))
 
-; Register signal s with e as the enable input.
+; Register a signal d with e as the enable input.
 (define-syntax-rule (register q0 e d)
   (feedback-last q0 (if~ e d)))
 
@@ -109,6 +109,8 @@
                [so (f~ s x)])
               (second~ so)))))
 
+; Transform a pair of functions into a Moore machine.
+; moore :: s -> (s -> i -> s) -> (s -> o) -> (Signal i -> Signal o)
 (define (moore s0 f g)
   (let ([f~ (medvedev s0 f)]
         [g~ (lift g s)])

@@ -33,7 +33,7 @@
 
 ; Getting the rest of a signal consists in evaluating
 ; the second element of the signal object.
-(define (rest~ s)
+(define (next s)
   ((second s)))
 
 ; Return a list with the first n samples of a signal.
@@ -41,13 +41,13 @@
 (define (sample-n n s)
   (if (<= n 0)
     empty
-    (cons (first s) (sample-n (sub1 n) (rest~ s)))))
+    (cons (first s) (sample-n (sub1 n) (next s)))))
 
 ; Apply an n-ary function to n signals.
 (define (map~ f . s)
   (signal
       (apply f      (map first s))
-      (apply map~ f (map rest~ s))))
+      (apply map~ f (map next  s))))
 
 ; Lift f into a function from signals to signal.
 ; This is a macro because f is not always a function.
@@ -60,19 +60,19 @@
     [(lift f s ...)
      (letrec ([f~ (lambda (s ...)
                      (signal
-                         (f (first s) ...)
-                         (f~ (rest~ s) ...)))])
+                         (f  (first s) ...)
+                         (f~ (next  s) ...)))])
           f~)]))
 
 ; Versions of standard functions and special forms
 ; that work on signals.
-(define if~     (lift if c x y))
-(define add1~   (lift add1 x))
-(define sub1~   (lift sub1 x))
-(define =~      (lift = x y))
-(define first~  (lift first x))
+(define if~     (lift if     c x y))
+(define add1~   (lift add1   x))
+(define sub1~   (lift sub1   x))
+(define first~  (lift first  x))
 (define second~ (lift second x))
 (define +~      (lift +))
+(define =~      (lift =))
 
 ; Create a signal that is the result of f
 ; and insert it as the first argument of f before s.
@@ -148,3 +148,8 @@
                 (if e (list (add1 n) (= n 2)) (list n #f)))) tick1))
 
 (sample-n 24 pulse)
+
+; Example: use a function with a variable number of arguments
+(define sum123 (+~ counter1 counter2 counter3))
+
+(sample-n 24 sum123)

@@ -6,8 +6,8 @@
 ; - x0 is the first, or current sample
 ; - f  is a function that computes a signal with the following samples.
 ;
-; This macro defines a signal as an initial value x0 and and expression
-; xs that computes another signal. xs is wrapped in a lambda to make f.
+; The second rule defines a signal as an initial value x0 and and expression
+; expr that computes another signal. expr is wrapped in a lambda to make f.
 ;
 ; For circuits with a feedback loop, computing the n-th sample will
 ; execute the n-th function, that will call the (n-1)-th function
@@ -33,76 +33,83 @@
 
 ; Getting the rest of a signal consists in evaluating
 ; the second element of the signal object.
-(define-syntax-rule (signal-rest xs)
-  ((second xs)))
+(define (rest~ s)
+  ((second s)))
 
 ; Return a list with the first n samples of a signal.
 ; TODO Should we use for/fold to avoid recursion?
-(define (sample-n n xs)
+(define (sample-n n s)
   (if (<= n 0)
     empty
-    (cons (first xs) (sample-n (sub1 n) (signal-rest xs)))))
+    (cons (first s) (sample-n (sub1 n) (rest~ s)))))
 
 ; Apply an n-ary function to n signals.
-; (define (signal-map f . xss)
-;   (signal
-;       (apply f (map first xss))
-;       (apply signal-map f (map signal-rest xss))))
+(define (map~ f . s)
+  (signal
+      (apply f      (map first s))
+      (apply map~ f (map rest~ s))))
 
 ; Lift f into a function from signals to signal.
 ; This is a macro because f is not always a function.
-(define-syntax-rule (comb f xs ...)
-  (letrec ([f/comb (lambda (xs ...)
+(define-syntax lift
+  (syntax-rules ()
+    ; Lift a function with a possibly variable number of arguments.
+    [(lift f)
+     (lambda x (apply map~ f x))]
+    ; Lift a function, macro or special form with a known number of arguments.
+    [(lift f s ...)
+     (letrec ([f~ (lambda (s ...)
                      (signal
-                         (f (first xs) ...)
-                         (f/comb (signal-rest xs) ...)))])
-          f/comb))
+                         (f (first s) ...)
+                         (f~ (rest~ s) ...)))])
+          f~)]))
 
 ; Versions of standard functions and special forms
 ; that work on signals.
-(define if/comb     (comb if cs xs ys))
-(define add1/comb   (comb add1 xs))
-(define sub1/comb   (comb sub1 xs))
-(define =/comb      (comb = xs ys))
-(define first/comb  (comb first xs))
-(define second/comb (comb second xs))
+(define if~     (lift if c x y))
+(define add1~   (lift add1 x))
+(define sub1~   (lift sub1 x))
+(define =~      (lift = x y))
+(define first~  (lift first x))
+(define second~ (lift second x))
+(define +~      (lift +))
 
 ; Create a signal that is the result of f
-; and insert it as the first argument of f before xs.
-(define-syntax-rule (feedback/first x0 (f xs ...))
-  (letrec ([ss (signal x0 (f ss xs ...))]) ss))
+; and insert it as the first argument of f before s.
+(define-syntax-rule (feedback-first x0 (f x ...))
+  (letrec ([y (signal x0 (f y x ...))]) y))
 
 ; Create a signal that is the result of f
-; and append it as the last argument of f after xs.
-(define-syntax-rule (feedback/last x0 (f xs ...))
-  (letrec ([ss (signal x0 (f xs ... ss))]) ss))
+; and append it as the last argument of f after s.
+(define-syntax-rule (feedback-last x0 (f x ...))
+  (letrec ([y (signal x0 (f x ... y))]) y))
 
-; Register signal xs with es as the enable input.
-(define-syntax-rule (register x0 es xs)
-  (feedback/last x0 (if/comb es xs)))
+; Register signal s with es as the enable input.
+(define-syntax-rule (register x0 e s)
+  (feedback-last x0 (if~ e s)))
 
 ; Transform a plain function into a Medvedev machine.
 ; medvedev :: s -> (s -> i -> s) -> (Signal i -> Signal s)
 (define (medvedev s0 f)
-  (let ([f/comb (comb f ss is)])
-    (lambda (xs)
-      (feedback/first s0 (f/comb xs)))))
+  (let ([f~ (lift f s x)])
+    (lambda (x)
+      (feedback-first s0 (f~ x)))))
 
 ; Transform a plain function into a Mealy machine.
 ; mealy :: s -> (s -> i -> (s, o)) -> (Signal i -> Signal o)
 ; TODO use values instead of lists?
 (define (mealy s0 f)
-  (let ([f/comb (comb f ss xs)])
-    (lambda (xs)
-      (letrec ([ss  (signal s0 (first/comb sos))]
-               [sos (f/comb ss xs)])
-              (second/comb sos)))))
+  (let ([f~ (lift f s x)])
+    (lambda (x)
+      (letrec ([s  (signal s0 (first~ so))]
+               [so (f~ s x)])
+              (second~ so)))))
 
 (define (moore s0 f g)
-  (let ([f/mdv (medvedev s0 f)]
-        [g/comb (comb g ss)])
-    (lambda (xs)
-      (g/comb (f/mdv xs)))))
+  (let ([f~ (medvedev s0 f)]
+        [g~ (lift g s)])
+    (lambda (x)
+      (g~ (f~ x)))))
 
 ; Example: a constant signal with value 42
 (define a (signal 42))
@@ -110,21 +117,21 @@
 
 ; Example: a mod-5 counter.
 (define counter1
-    (signal 0 (if/comb tick1
+    (signal 0 (if~ tick1
                 (signal 0)
-                (add1/comb counter1))))
+                (add1~ counter1))))
 
 (define tick1
-    (=/comb counter1 (signal 4)))
+    (=~ counter1 (signal 4)))
 
 (sample-n 24 counter1)
 
 ; Example: a mod-3 counter driven by counter1
 (define counter2
     (register 0 tick1
-        (if/comb (=/comb counter2 (signal 2))
+        (if~ (=~ counter2 (signal 2))
           (signal 0)
-          (add1/comb counter2))))
+          (add1~ counter2))))
 
 (sample-n 24 counter2)
 

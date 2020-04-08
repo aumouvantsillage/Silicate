@@ -2,7 +2,7 @@
 
 ; A signal represents an infinite list of values.
 ;
-; In Silicate, a signal is defined as a two-element list (x0 f) where
+; In Silicate, a signal is defined as a pair (x0 . f) where
 ; - x0 is the first, or current sample
 ; - f  is a function that computes a signal with the following samples.
 ;
@@ -20,34 +20,37 @@
     ; Define a constant signal with value x0.
     ; For a constant signal s, (second s) will return s itself.
     [(signal x0)
-     (letrec ([s (list x0 (lambda () s))]) s)]
+     (letrec ([s (cons x0 (lambda () s))]) s)]
     ; Define a signal with an initial sample x0 and an expression expr
     ; that compute a signal with the following samples.
     ; The expression will be wrapped into a memoized lambda.
     [(signal x0 expr)
-     (list x0
+     (cons x0
            (let ([m (void)])
              (lambda ()
                (cond [(void? m) (set! m expr)])
                m)))]))
 
-; Getting the rest of a signal consists in evaluating
-; the second element of the signal object.
-(define (next s)
-  ((second s)))
+; Alias the car function to read the first sample of a signal.
+(define head car)
+
+; Getting the tail of a signal consists in evaluating
+; the right part of the pair.
+(define (tail s)
+  ((cdr s)))
 
 ; Return a list with the first n samples of a signal.
 ; TODO Should we use for/fold to avoid recursion?
 (define (sample-n n s)
   (if (<= n 0)
     empty
-    (cons (first s) (sample-n (sub1 n) (next s)))))
+    (cons (car s) (sample-n (sub1 n) (tail s)))))
 
 ; Apply an n-ary function to n signals.
 (define (map~ f . s)
   (signal
-      (apply f      (map first s))
-      (apply map~ f (map next  s))))
+      (apply f      (map head s))
+      (apply map~ f (map tail s))))
 
 ; Lift f into a function from signals to signal.
 ; This is a macro because f is not always a function.
@@ -56,12 +59,13 @@
     ; Lift a function with a possibly variable number of arguments.
     [(lift f)
      (lambda x (apply map~ f x))]
-    ; Lift a function, macro or special form with a known number of arguments.
+    ; Lift a function, macro or special form with a known arity.
+    ; This should be more efficient than map~.
     [(lift f s ...)
      (letrec ([f~ (lambda (s ...)
                      (signal
-                         (f  (first s) ...)
-                         (f~ (next  s) ...)))])
+                         (f  (head s) ...)
+                         (f~ (tail s) ...)))])
           f~)]))
 
 ; Versions of standard functions and special forms
@@ -76,17 +80,17 @@
 
 ; Create a signal that is the result of f
 ; and insert it as the first argument of f before s.
-(define-syntax-rule (feedback-first x0 (f x ...))
-  (letrec ([y (signal x0 (f y x ...))]) y))
+(define-syntax-rule (feedback-first y0 (f x ...))
+  (letrec ([y (signal y0 (f y x ...))]) y))
 
 ; Create a signal that is the result of f
 ; and append it as the last argument of f after s.
-(define-syntax-rule (feedback-last x0 (f x ...))
-  (letrec ([y (signal x0 (f x ... y))]) y))
+(define-syntax-rule (feedback-last y0 (f x ...))
+  (letrec ([y (signal y0 (f x ... y))]) y))
 
-; Register signal s with es as the enable input.
-(define-syntax-rule (register x0 e s)
-  (feedback-last x0 (if~ e s)))
+; Register signal s with e as the enable input.
+(define-syntax-rule (register q0 e d)
+  (feedback-last q0 (if~ e d)))
 
 ; Transform a plain function into a Medvedev machine.
 ; medvedev :: s -> (s -> i -> s) -> (Signal i -> Signal s)

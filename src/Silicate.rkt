@@ -1,4 +1,4 @@
-#lang racket
+#lang typed/racket/no-check
 
 ; A signal represents an infinite list of values.
 ;
@@ -16,6 +16,7 @@
 ; There is a chance that the same sample is computed multiple times and
 ; stack space will be wasted. For this reason, the result of each function
 ; is memoized.
+(define-type (Signal a) (Pairof a (-> (Signal a))))
 (define-syntax signal
   (syntax-rules ()
     ; Define a constant signal with value x0.
@@ -33,20 +34,31 @@
                m)))]))
 
 ; Alias the car function to read the first sample of a signal.
+(: head ((Signal a) -> a))
 (define head car)
 
 ; Getting the tail of a signal consists in evaluating the right part of the pair.
+(: tail ((Signal a) -> (Signal a)))
 (define (tail s)
   ((cdr s)))
 
 ; Return a list with the first n samples of a signal.
 ; TODO Should we use for/fold to avoid recursion?
+(: sample-n (Natural (Signal a) -> (Listof a)))
 (define (sample-n n s)
   (if (<= n 0)
     empty
     (cons (car s) (sample-n (sub1 n) (tail s)))))
 
+(: list->signal ((Listof a) -> (Signal a)))
+(define (list->signal l)
+  (if (= (length l) 1)
+    (signal (first l))
+    (signal (first l) (list->signal (rest l)))))
+
 ; Apply an n-ary function to n signals.
+; TODO How to typecheck the Any's?
+(: map~ ((Any * -> a) (Signal Any) * -> (Signal a)))
 (define (map~ f . s)
   (signal
       (apply f      (map head s))
@@ -63,19 +75,26 @@
     ; This should be more efficient than map~.
     [(lift f s ...)
      (letrec ([f~ (lambda (s ...)
-                     (signal
-                         (f  (head s) ...)
-                         (f~ (tail s) ...)))])
+                    (signal
+                      (f  (head s) ...)
+                      (f~ (tail s) ...)))])
           f~)]))
 
 ; Versions of standard functions and special forms
 ; that work on signals.
+(: if~ ((Signal Bool) (Signal a) (Signal a) -> (Signal a)))
 (define if~     (lift if     c x y))
+(: add1~ ((Signal Number) -> (Signal Number)))
 (define add1~   (lift add1   x))
+(: add1~ ((Signal Number) -> (Signal Number)))
 (define sub1~   (lift sub1   x))
+(: first~ ((Signal (Listof a)) -> (Signal a)))
 (define first~  (lift first  x))
+(: first~ ((Signal (Listof a)) -> (Signal a)))
 (define second~ (lift second x))
+(: +~ ((Signal Number) * -> (Signal Number)))
 (define +~      (lift +))
+(: =~ ((Signal Number) * -> (Signal Bool)))
 (define =~      (lift =))
 
 ; Create a signal that is the result of f
@@ -93,15 +112,15 @@
   (feedback-last q0 (if~ e d)))
 
 ; Transform a plain function into a Medvedev machine.
-; medvedev :: s -> (s -> i -> s) -> (Signal i -> Signal s)
+(: medvedev (s (s i -> s) -> ((Signal i) -> (Signal s))))
 (define (medvedev s0 f)
   (let ([f~ (lift f s x)])
     (lambda (x)
       (feedback-first s0 (f~ x)))))
 
 ; Transform a plain function into a Mealy machine.
-; mealy :: s -> (s -> i -> (s, o)) -> (Signal i -> Signal o)
 ; TODO use pairs instead of lists?
+(: mealy (s (s i -> (List s o)) -> ((Signal i) -> (Signal o))))
 (define (mealy s0 f)
   (let ([f~ (lift f s x)])
     (lambda (x)
@@ -110,7 +129,7 @@
               (second~ so)))))
 
 ; Transform a pair of functions into a Moore machine.
-; moore :: s -> (s -> i -> s) -> (s -> o) -> (Signal i -> Signal o)
+(: moore (s (s i -> s) (s -> o) -> ((Signal i) -> (Signal o))))
 (define (moore s0 f g)
   (let ([f~ (medvedev s0 f)]
         [g~ (lift g s)])
@@ -122,6 +141,7 @@
 ; * x[n] is the value of x for (n-1)×t1 < t ≤ n×t1
 ; * The result y[m] is the value of x for t = m×t2
 ; We must make sure that register on y produces the expected signal.
+(: cross-domain (Positive-Integer Positive-Integer (Signal a) -> (Signal a)))
 (define (cross-domain t1 t2 x)
   (if (= t1 t2)
     ; If periods are the same, return x.

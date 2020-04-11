@@ -101,7 +101,7 @@
 
 ; Transform a plain function into a Mealy machine.
 ; mealy :: s -> (s -> i -> (s, o)) -> (Signal i -> Signal o)
-; TODO use values instead of lists?
+; TODO use pairs instead of lists?
 (define (mealy s0 f)
   (let ([f~ (lift f s x)])
     (lambda (x)
@@ -116,6 +116,22 @@
         [g~ (lift g s)])
     (lambda (x)
       (g~ (f~ x)))))
+
+; This function is translated from the veryUnsafeSynchronizer function in Cλash.
+; It assumes the following timing for signals:
+; * x[n] is the value of x for (n-1)×t1 < t ≤ n×t1
+; * The result y[m] is the value of x for t = m×t2
+; We must make sure that register on y produces the expected signal.
+(define (cross-domain t1 t2 x)
+  (if (= t1 t2)
+    ; If periods are the same, return x.
+    ; In Cλash, a type conversion from source to target domain is performed.
+    x
+    (letrec ([cross-domain-at (lambda (t u)
+                                (if (<= t 0)
+                                  (signal (head u) (cross-domain-at (+ t t2) u))
+                                  (cross-domain-at (- t t1) (tail u))))])
+        (cross-domain-at 0 x))))
 
 ; Example: a constant signal with value 42
 (define a (signal 42))
@@ -159,3 +175,10 @@
 (define sum123 (+~ counter1 counter2 counter3))
 
 (sample-n 24 sum123)
+
+; Example: cross-domain signal resampling
+(define counter1-over (cross-domain 7 3 counter1))
+(define counter1-sub (cross-domain 3 7 counter1))
+
+(sample-n 24 counter1-over)
+(sample-n 24 counter1-sub)

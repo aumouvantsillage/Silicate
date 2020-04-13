@@ -1,101 +1,116 @@
-#lang typed/racket/no-check
+#lang typed/racket ;/no-check
 
 ; A signal represents an infinite list of values.
 ;
 ; In Silicate, a signal is defined as a pair (x0 . f) where
 ; - x0 is the first, or current sample
 ; - f  is a function that computes a signal with the next samples.
-;
-; The second rule below defines a signal using an initial value x0 and an
-; expression expr that computes another signal.
-; expr is wrapped in a lambda to make f.
-;
-; For circuits with a feedback loop, computing the n-th sample will
-; execute the n-th function, that will call the (n-1)-th function
-; recursively, etc.
-; There is a chance that the same sample is computed multiple times and
-; stack space will be wasted. For this reason, the result of each function
-; is memoized.
 (define-type (Signal a) (Pairof a (-> (Signal a))))
-(define-syntax signal
-  (syntax-rules ()
-    ; Define a constant signal with value x0.
-    ; For a constant signal s, (second s) will return s itself.
-    [(signal x0)
-     (letrec ([s (cons x0 (lambda () s))]) s)]
-    ; Define a signal with an initial sample x0 and an expression expr
-    ; that compute a signal with the following samples.
-    ; The expression will be wrapped into a memoized lambda.
-    [(signal x0 expr)
-     (cons x0
-           (let ([m (void)])
-             (lambda ()
-               (cond [(void? m) (set! m expr)])
-               m)))]))
+
+; Alias the cons function to create a signal.
+; Typed Racket will not accept (define make-signal cons)
+(: make-signal : All (a) a (-> (Signal a)) -> (Signal a))
+(define (make-signal x0 f)
+  (cons x0 f))
 
 ; Alias the car function to read the first sample of a signal.
-(: head ((Signal a) -> a))
-(define head car)
+; Typed Racket will not accept (define make-signal car)
+(: head : All (a) (Signal a) -> a)
+(define (head s)
+  (car s))
 
 ; Getting the tail of a signal consists in evaluating the right part of the pair.
-(: tail ((Signal a) -> (Signal a)))
+(: tail : All (a) (Signal a) -> (Signal a))
 (define (tail s)
   ((cdr s)))
 
-; Return a list with the first n samples of a signal.
+; Create a constant signal.
+(: const~ : All (a) a -> (Signal a))
+(define (const~ x0)
+  (letrec ([s : (Signal a) (make-signal x0 (lambda () s))]) s))
+
+; Define a signal with an initial sample x0 and an expression expr
+; that compute a signal with the following samples.
+; The expression will be wrapped into a memoized lambda.
+;
+; The flag and initial value of res have been introduced to satify the
+; type checker. Attempts to use the Option type from Typed Racket with
+; occurrence typing failed.
+(define-syntax-rule (signal x0 expr)
+    (make-signal x0
+        (let ([res : (Option (Signal Any)) #f])
+          (lambda ()
+            (cond [(not res) (set! res expr)])
+            res))))
+
+; Return a list with the first n samples of a signal s.
 ; TODO Should we use for/fold to avoid recursion?
-(: sample-n (Natural (Signal a) -> (Listof a)))
-(define (sample-n n s)
+(: signal->list : All (a) Natural (Signal a) -> (Listof a))
+(define (signal->list n s)
   (if (<= n 0)
     empty
-    (cons (car s) (sample-n (sub1 n) (tail s)))))
+    (cons (head s) (signal->list (sub1 n) (tail s)))))
 
-(: list->signal ((Listof a) -> (Signal a)))
+(: list->signal : All (a) (Listof a) -> (Signal a))
 (define (list->signal l)
   (if (= (length l) 1)
-    (signal (first l))
+    (const~ (first l))
     (signal (first l) (list->signal (rest l)))))
 
-; Apply an n-ary function to n signals.
-; TODO How to typecheck the Any's?
-(: map~ ((Any * -> a) (Signal Any) * -> (Signal a)))
-(define (map~ f . s)
-  (signal
-      (apply f      (map head s))
-      (apply map~ f (map tail s))))
+(define-syntax lambda~
+    (syntax-rules ()
+      [(lambda~ (x ...) body ...)
+       (letrec ([f : (All (a b (... ...)) (Signal b) (... ...) b -> (Signal a))
+                     (lambda (x ...)
+                       (signal
+                         ((lambda (x ...) body ...) (head x) ...)
+                         (f                         (tail x) ...)))])
+               f)]
+      [(lambda~ f)
+       (letrec ([g (lambda x
+                     (signal
+                       (apply f (map head x))
+                       (apply g (map tail x))))])
+               g)]
+      [(lambda~ x body ...)
+       (lambda~ (lambda x a body ...))]))
 
-; Lift f into a function from signals to signal.
-; This is a macro because f is not always a function.
-(define-syntax lift
-  (syntax-rules ()
-    ; Lift a function with a possibly variable number of arguments.
-    [(lift f)
-     (lambda x (apply map~ f x))]
-    ; Lift a function, macro or special form that has a known arity.
-    ; This should be more efficient than map~.
-    [(lift f s ...)
-     (letrec ([f~ (lambda (s ...)
-                    (signal
-                      (f  (head s) ...)
-                      (f~ (tail s) ...)))])
-          f~)]))
-
+(define-syntax define~
+    (syntax-rules ()
+      [(define~ (name x ...) body ...)
+       (define name (lambda~ (x ...) body ...))]
+      [(define~ name f)
+       (define name (lambda~ f))]
+      [(define~ (name . x) body ...)
+       (define name (lambda~ x body ...))]))
+#|
 ; Versions of standard functions and special forms
 ; that work on signals.
-(: if~ ((Signal Bool) (Signal a) (Signal a) -> (Signal a)))
-(define if~     (lift if     c x y))
-(: add1~ ((Signal Number) -> (Signal Number)))
-(define add1~   (lift add1   x))
-(: add1~ ((Signal Number) -> (Signal Number)))
-(define sub1~   (lift sub1   x))
-(: first~ ((Signal (Listof a)) -> (Signal a)))
-(define first~  (lift first  x))
-(: first~ ((Signal (Listof a)) -> (Signal a)))
-(define second~ (lift second x))
-(: +~ ((Signal Number) * -> (Signal Number)))
-(define +~      (lift +))
-(: =~ ((Signal Number) * -> (Signal Bool)))
-(define =~      (lift =))
+(: if~ : All (a) (Signal Boolean) (Signal a) (Signal a) -> (Signal a))
+(define~ (if~ c x y)
+  (if c x y))
+
+(: add1~ : (Signal Number) -> (Signal Number))
+(define~ (add1~ x)
+  (add1 x))
+
+(: sub1~ : (Signal Number) -> (Signal Number))
+(define~ (sub1~ x)
+  (sub1 x))
+
+(: first~ : All (a b ...) (Signal (List a b ... b)) -> (Signal a))
+(define~ (first~ x)
+  (first x))
+
+(: second~ : All (a b c ...) (Signal (List a b c ... c)) -> (Signal b))
+(define~ (second~ x)
+  (second x))
+
+(: +~ : (Signal Number) * -> (Signal Number))
+(define~ +~ +)
+
+(: =~ : (Signal Number) * -> (Signal Boolean))
+(define~ =~ =)
 
 ; Create a signal that is the result of f
 ; and insert it as the first argument of f.
@@ -112,36 +127,29 @@
   (feedback-last q0 (if~ e d)))
 
 ; Transform a plain function into a Medvedev machine.
-(: medvedev (s (s i -> s) -> ((Signal i) -> (Signal s))))
-(define (medvedev s0 f)
-  (let ([f~ (lift f s x)])
-    (lambda (x)
-      (feedback-first s0 (f~ x)))))
+(: medvedev : All (s i) s (s i -> s) (Signal i) -> (Signal s))
+(define (medvedev s0 f x)
+  (feedback-first s0 ((lambda~ f) x)))
 
 ; Transform a plain function into a Mealy machine.
 ; TODO use pairs instead of lists?
-(: mealy (s (s i -> (List s o)) -> ((Signal i) -> (Signal o))))
-(define (mealy s0 f)
-  (let ([f~ (lift f s x)])
-    (lambda (x)
-      (letrec ([s  (signal s0 (first~ so))]
-               [so (f~ s x)])
-              (second~ so)))))
+(: mealy : All (s i o) s (s i -> (List s o)) (Signal i) -> (Signal o))
+(define (mealy s0 f x)
+  (letrec ([st (signal s0 (first~ so))]
+           [so ((lambda~ f) st x)])
+          (second~ so)))
 
 ; Transform a pair of functions into a Moore machine.
-(: moore (s (s i -> s) (s -> o) -> ((Signal i) -> (Signal o))))
-(define (moore s0 f g)
-  (let ([f~ (medvedev s0 f)]
-        [g~ (lift g s)])
-    (lambda (x)
-      (g~ (f~ x)))))
+(: moore : All (s i o) s (s i -> s) (s -> o) (Signal i) -> (Signal o))
+(define (moore s0 f g x)
+  ((lambda~ g) (medvedev s0 f x)))
 
 ; This function is translated from the veryUnsafeSynchronizer function in Cλash.
 ; It assumes the following timing for signals:
 ; * x[n] is the value of x for (n-1)×t1 < t ≤ n×t1
 ; * The result y[m] is the value of x for t = m×t2
 ; We must make sure that register on y produces the expected signal.
-(: cross-domain (Positive-Integer Positive-Integer (Signal a) -> (Signal a)))
+(: cross-domain : All (a) Positive-Integer Positive-Integer (Signal a) -> (Signal a))
 (define (cross-domain t1 t2 x)
   (if (= t1 t2)
     ; If periods are the same, return x.
@@ -152,53 +160,59 @@
                                   (signal (head u) (cross-domain-at (+ t t2) u))
                                   (cross-domain-at (- t t1) (tail u))))])
         (cross-domain-at 0 x))))
-
+|#
 ; Example: a constant signal with value 42
-(define a (signal 42))
-(sample-n 24 a)
+(signal->list 24 (const~ 42))
 
+; Example: a signal defined from a list
+(signal->list 8 (list->signal (list 10 20 30 40)))
+#|
 ; Example: a mod-5 counter.
+(: counter1 : (Signal Integer))
 (define counter1
     (signal 0 (if~ tick1
-                (signal 0)
+                (const~ 0)
                 (add1~ counter1))))
 
 (define tick1
-    (=~ counter1 (signal 4)))
+    (=~ counter1 (const~ 4)))
 
-(sample-n 24 counter1)
+(signal->list 24 counter1)
 
 ; Example: a mod-3 counter driven by counter1
+(: counter2 : (Signal Integer))
 (define counter2
     (register 0 tick1
-        (if~ (=~ counter2 (signal 2))
-          (signal 0)
+        (if~ (=~ counter2 (const~ 2))
+          (const~ 0)
           (add1~ counter2))))
 
-(sample-n 24 counter2)
+(signal->list 24 counter2)
 
 ; Example: a counter defined as a medvedev machine
+(: counter3 : (Signal Integer))
 (define counter3
-    ((medvedev 0 (lambda (n e)
-                  (if e (add1 n) n))) tick1))
+    (medvedev 0 (lambda (n e) (if e (add1 n) n)) tick1))
 
-(sample-n 24 counter3)
+(signal->list 24 counter3)
 
 ; Example: pulse generator as a mealy machine
+(: pulse : (Signal Boolean))
 (define pulse
-    ((mealy 0 (lambda (n e)
-                (if e (list (add1 n) (= n 2)) (list n #f)))) tick1))
+    (mealy 0 (lambda (n e)
+                (if e (list (add1 n) (= n 2)) (list n #f))) tick1))
 
-(sample-n 24 pulse)
+(signal->list 24 pulse)
 
 ; Example: use a function with a variable number of arguments
 (define sum123 (+~ counter1 counter2 counter3))
 
-(sample-n 24 sum123)
+(signal->list 24 sum123)
 
 ; Example: cross-domain signal resampling
 (define counter1-over (cross-domain 7 3 counter1))
 (define counter1-sub (cross-domain 3 7 counter1))
 
-(sample-n 24 counter1-over)
-(sample-n 24 counter1-sub)
+(signal->list 24 counter1-over)
+(signal->list 24 counter1-sub)
+|#

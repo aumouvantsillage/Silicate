@@ -9,24 +9,23 @@
 ; - f  is a function that computes a signal with the next samples.
 
 ; Alias the car function to read the first sample of a signal.
-(define head car)
+(define signal-first car)
 
-; Getting the tail of a signal consists in evaluating the right part of the pair.
-(define (tail x)
+; Getting the rest of a signal consists in evaluating the right part of the pair.
+(define (signal-rest x)
   ((cdr x)))
 
-(define (drop~ x n)
+(define (signal-drop x n)
   (if (<= n 0)
     x
-    (drop~ (tail x) (sub1 n))))
+    (signal-drop (signal-rest x) (sub1 n))))
 
-; Create a constant signal.
-(define (const~ x0)
-  (letrec ([s (cons x0 (lambda () s))]) s))
-
-; Test whether a signal is constant.
-(define (const~? s)
-  (eq? s (tail s)))
+; Return a list with the first n samples of a signal s.
+; TODO Should we use for/fold to avoid recursion?
+(define (signal-take s n)
+  (if (<= n 0)
+    empty
+    (cons (signal-first s) (signal-take (signal-rest s) (sub1 n)))))
 
 ; Define a signal with an initial sample x0 and an expression expr
 ; that compute a signal with the following samples.
@@ -38,17 +37,31 @@
         (cond [(void? res) (set! res expr)])
         res))))
 
-; Return a list with the first n samples of a signal s.
-; TODO Should we use for/fold to avoid recursion?
-(define (take~ s n)
-  (if (<= n 0)
-    empty
-    (cons (head s) (take~ (tail s) (sub1 n)))))
+; Create a signal that is the result of f
+; and insert it as the first argument of f.
+(define-syntax-rule (feedback-first y0 (f x ...))
+  (letrec ([y (signal y0 (f y x ...))]) y))
+
+; Create a signal that is the result of f
+; and append it as the last argument of f.
+(define-syntax-rule (feedback-last y0 (f x ...))
+  (letrec ([y (signal y0 (f x ... y))]) y))
+
+(define (feedback y0 f)
+  (feedback-first y0 (f)))
+
+; Create a static signal.
+(define (static x0)
+  (feedback x0 identity))
+
+; Test whether a signal is static.
+(define (static? s)
+  (eq? s (signal-rest s)))
 
 ; Convert a list to a signal.
 (define (list->signal l)
   (if (= (length l) 1)
-    (const~ (first l))
+    (static (first l))
     (signal (first l) (list->signal (rest l)))))
 
 ; Helpers to create lambda functions that work on signals.
@@ -59,15 +72,15 @@
      (letrec ([f (lambda (x ...) body ...)]
               [g (lambda (x ...)
                    (signal
-                     (f (head x) ...)
-                     (g (tail x) ...)))])
+                     (f (signal-first x) ...)
+                     (g (signal-rest x) ...)))])
        g)]
     ; Convert a function f with unspecified arity.
     [(lambda~ f)
      (letrec ([g (lambda x
                    (signal
-                     (apply f (map head x))
-                     (apply g (map tail x))))])
+                     (apply f (map signal-first x))
+                     (apply g (map signal-rest x))))])
        g)]
     ; Create a function with variable arity.
     [(lambda~ x body ...)
@@ -107,19 +120,21 @@
 (define~ *~ *)
 (define~ =~ =)
 
-; Create a signal that is the result of f
-; and insert it as the first argument of f.
-(define-syntax-rule (feedback-first y0 (f x ...))
-  (letrec ([y (signal y0 (f y x ...))]) y))
+; Simple register.
+(define-syntax-rule (register q0 d)
+  (signal q0 d))
 
-; Create a signal that is the result of f
-; and append it as the last argument of f.
-(define-syntax-rule (feedback-last y0 (f x ...))
-  (letrec ([y (signal y0 (f x ... y))]) y))
+; Register with synchronous reset.
+(define-syntax-rule (register/r q0 r d)
+  (signal q0 (if~ r q0 d)))
 
-; Register a signal d with e as the enable input.
-(define-syntax-rule (register q0 e d)
+; Register with enable.
+(define-syntax-rule (register/e q0 e d)
   (feedback-last q0 (if~ e d)))
+
+; Register with synchronous reset and enable.
+(define-syntax-rule (register/re q0 r e d)
+  (feedback q0 (lambda (q) (if~ r q0 (if~ e d q)))))
 
 ; Transform a plain function into a Medvedev machine.
 ; medvedev : ∀(s i) s (s i -> s) (Signal i) -> (Signal s)
@@ -143,13 +158,13 @@
 ; It assumes the following timing for signals:
 ; * x[n] is the value of x for (n-1)×t1 < t ≤ n×t1
 ; * The result y[m] is the value of x for t = m×t2
-(define (cross-domain t1 t2 x)
+(define (resample t1 t2 x)
   (if (= t1 t2)
     ; If periods are the same, return x.
     ; In Cλash, a type conversion from source to target domain is performed.
     x
-    (letrec ([cross-domain-at (lambda (t u)
-                                (if (<= t 0)
-                                  (signal (head u) (cross-domain-at (+ t t2) u))
-                                  (cross-domain-at (- t t1) (tail u))))])
-      (cross-domain-at 0 x))))
+    (letrec ([resample-relative (lambda (t u)
+                                  (if (<= t 0)
+                                    (signal (signal-first u) (resample-relative (+ t t2) u))
+                                    (resample-relative (- t t1) (signal-rest u))))])
+      (resample-relative 0 x))))

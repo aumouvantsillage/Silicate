@@ -2,6 +2,6 @@
 #lang racket
 
 (require rackunit/text-ui)
-(require "signals-tests.rkt")
+(require "signal-tests.rkt")
 
-(run-tests signals-tests)
+(run-tests signal-tests)

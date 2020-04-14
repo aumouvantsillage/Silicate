@@ -30,7 +30,7 @@
 ; Define a signal with an initial sample x0 and an expression expr
 ; that compute a signal with the following samples.
 ; The expression will be wrapped into a memoized lambda.
-(define-syntax-rule (signal x0 expr)
+(define-syntax-rule (make-signal x0 expr)
   (cons x0
     (let ([res (void)])
       (lambda ()
@@ -40,12 +40,12 @@
 ; Create a signal that is the result of f
 ; and insert it as the first argument of f.
 (define-syntax-rule (feedback-first y0 (f x ...))
-  (letrec ([y (signal y0 (f y x ...))]) y))
+  (letrec ([y (make-signal y0 (f y x ...))]) y))
 
 ; Create a signal that is the result of f
 ; and append it as the last argument of f.
 (define-syntax-rule (feedback-last y0 (f x ...))
-  (letrec ([y (signal y0 (f x ... y))]) y))
+  (letrec ([y (make-signal y0 (f x ... y))]) y))
 
 (define (feedback y0 f)
   (feedback-first y0 (f)))
@@ -59,10 +59,14 @@
   (eq? s (signal-rest s)))
 
 ; Convert a list to a signal.
+; FIXME Error on empty list
 (define (list->signal l)
   (if (= (length l) 1)
     (static (first l))
-    (signal (first l) (list->signal (rest l)))))
+    (make-signal (first l) (list->signal (rest l)))))
+
+(define (signal . x)
+  (list->signal x))
 
 ; Helpers to create lambda functions that work on signals.
 (define-syntax lambda~
@@ -71,14 +75,14 @@
     [(lambda~ (x ...) body ...)
      (letrec ([f (lambda (x ...) body ...)]
               [g (lambda (x ...)
-                   (signal
+                   (make-signal
                      (f (signal-first x) ...)
                      (g (signal-rest x) ...)))])
        g)]
     ; Convert a function f with unspecified arity.
     [(lambda~ f)
      (letrec ([g (lambda x
-                   (signal
+                   (make-signal
                      (apply f (map signal-first x))
                      (apply g (map signal-rest x))))])
        g)]
@@ -122,11 +126,11 @@
 
 ; Simple register.
 (define-syntax-rule (register q0 d)
-  (signal q0 d))
+  (make-signal q0 d))
 
 ; Register with synchronous reset.
 (define-syntax-rule (register/r q0 r d)
-  (signal q0 (if~ r q0 d)))
+  (register q0 (if~ r q0 d)))
 
 ; Register with enable.
 (define-syntax-rule (register/e q0 e d)
@@ -145,7 +149,7 @@
 ; TODO use pairs instead of lists?
 ; mealy : ∀(s i o) s (s i -> (List s o)) (Signal i) -> (Signal o)
 (define (mealy s0 f x)
-  (letrec ([s  (signal s0 (first~ so))]
+  (letrec ([s  (register s0 (first~ so))]
            [so ((lambda~ f) s  x)])
     (second~ so)))
 
@@ -165,6 +169,6 @@
     x
     (letrec ([resample-relative (lambda (t u)
                                   (if (<= t 0)
-                                    (signal (signal-first u) (resample-relative (+ t t2) u))
+                                    (make-signal (signal-first u) (resample-relative (+ t t2) u))
                                     (resample-relative (- t t1) (signal-rest u))))])
       (resample-relative 0 x))))

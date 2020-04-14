@@ -28,7 +28,7 @@
     (test-case "Can delay a signal"
       (letrec ([l (range 1 5)]
                [s1 (list->signal l)]
-               [s2 (signal -1 s1)])
+               [s2 (register -1 s1)])
         (check-eq? -1 (signal-first s2))
         (check-eq? s1 (signal-rest s2))))
 
@@ -84,31 +84,31 @@
 
     (test-case "Can create a simple counter"
       (letrec ([n 10]
-               [s (signal 0 (add1~ s))])
+               [s (register 0 (add1~ s))])
         (check-equal? (range n) (signal-take s n))))
 
     (test-case "Can create a modulo counter"
       (letrec ([n1 4] [n2 (* 3 n1)]
-               [s (signal 0 (if~ (=~ s (static (sub1 n1))) (static 0) (add1~ s)))])
+               [s (register 0 (if~ (=~ s (static (sub1 n1))) (static 0) (add1~ s)))])
         (check-equal? (build-list n2 (lambda (x) (remainder x n1)))
                       (signal-take s n2))))
 
     (test-case "Can cascade counters"
       (letrec ([n1 4] [n2 (* 5 n1)]
-               [s1 (signal 0 (if~ e (static 0) (add1~ s1)))]
+               [s1 (register 0 (if~ e (static 0) (add1~ s1)))]
                [e (=~ s1 (static (sub1 n1)))]
                [s2 (register/e 0 e (add1~ s2))])
         (check-equal? (build-list n2 (lambda (x) (quotient x n1)))
                       (signal-take s2 n2))))
 
     (test-case "Can create a counter as a Medvedev machine"
-      (letrec ([tick (list->signal (list #f #t #f #t #t #f))]
+      (letrec ([tick (signal #f #t #f #t #t #f)]
                [s (medvedev 0 (lambda (n e) (if e (add1 n) n)) tick)]
                [l (list 0 0 1 1 2 3 3)])
         (check-equal? l (signal-take s (length l)))))
 
     (test-case "Can generate pulses with a Mealy machine"
-      (letrec ([tick (list->signal (list #f #t #f #t #t #f))]
+      (letrec ([tick (signal #f #t #f #t #t #f)]
                [s (mealy 0 (lambda (n e)
                              (if e
                                  (list (add1 n) (= n 1))
@@ -118,7 +118,7 @@
         (check-equal? l (signal-take s (length l)))))
 
     (test-case "Can generate pulses with a Moore machine"
-      (letrec ([tick (list->signal (list #f #t #f #t #t #f))]
+      (letrec ([tick (signal #f #t #f #t #t #f)]
                [s (moore 0 (lambda (n e) (if e (add1 n) n))
                            (lambda (n)   (= n 1))
                            tick)]

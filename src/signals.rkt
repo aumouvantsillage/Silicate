@@ -15,9 +15,18 @@
 (define (tail x)
   ((cdr x)))
 
+(define (drop~ x n)
+  (if (<= n 0)
+    x
+    (drop~ (tail x) (sub1 n))))
+
 ; Create a constant signal.
 (define (const~ x0)
   (letrec ([s (cons x0 (lambda () s))]) s))
+
+; Test whether a signal is constant.
+(define (const~? s)
+  (eq? s (tail s)))
 
 ; Define a signal with an initial sample x0 and an expression expr
 ; that compute a signal with the following samples.
@@ -31,10 +40,10 @@
 
 ; Return a list with the first n samples of a signal s.
 ; TODO Should we use for/fold to avoid recursion?
-(define (signal->list n s)
+(define (take~ s n)
   (if (<= n 0)
     empty
-    (cons (head s) (signal->list (sub1 n) (tail s)))))
+    (cons (head s) (take~ (tail s) (sub1 n)))))
 
 ; Convert a list to a signal.
 (define (list->signal l)
@@ -94,7 +103,8 @@
   (second x))
 
 (define~ +~ +)
-
+(define~ -~ -)
+(define~ *~ *)
 (define~ =~ =)
 
 ; Create a signal that is the result of f

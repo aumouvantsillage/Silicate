@@ -9,8 +9,8 @@
         [static       (-> any/c   signal?)]
         [static?      (-> signal? boolean?)]
         [list->signal (-> (non-empty-listof any/c) signal?)]
-        [rename signal* signal
-                      (->* () () #:rest (non-empty-listof any/c) signal?)]
+        [rename signal*
+         signal       (->* () () #:rest (non-empty-listof any/c) signal?)]
         [if~          (-> signal? signal? signal? signal?)]
         [add1~        (-> signal-of-number? signal-of-number?)]
         [sub1~        (-> signal-of-number? signal-of-number?)]
@@ -67,17 +67,16 @@
         (unless res (set! res expr))
         res))))
 
-; Create a signal that is the result of f
-; and insert it as the first argument of f.
+; Create a signal y = (f y x ...)
 (define-syntax-rule (feedback-first y0 (f x ...))
   (letrec ([y (make-signal y0 (f y x ...))]) y))
 
-; Create a signal that is the result of f
-; and append it as the last argument of f.
+; Create a signal y = (f x ... y)
 (define-syntax-rule (feedback-last y0 (f x ...))
   (letrec ([y (make-signal y0 (f x ... y))]) y))
 
-(define (feedback y0 f)
+; Create a signal y = (f y).
+(define-syntax-rule (feedback y0 f)
   (feedback-first y0 (f)))
 
 ; Create a static signal.

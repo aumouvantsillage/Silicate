@@ -73,7 +73,7 @@
                [l2 (range 10 50 10)]
                [l3 (range 1  5  1)]
                [s (if~ (list->signal l1) (list->signal l2) (list->signal l3))])
-        (check-equal? (map (lambda (c x y) (if c x y)) l1 l2 l3) (signal-take s (length l1)))))
+        (check-equal? (map (λ (c x y) (if c x y)) l1 l2 l3) (signal-take s (length l1)))))
 
     (test-case "Can register a signal"
       (letrec ([e  (list #f #t #f #t #t #f)]
@@ -90,7 +90,7 @@
     (test-case "Can create a modulo counter"
       (letrec ([n1 4] [n2 (* 3 n1)]
                [s (register 0 (if~ (=~ s (static (sub1 n1))) (static 0) (add1~ s)))])
-        (check-equal? (build-list n2 (lambda (x) (remainder x n1)))
+        (check-equal? (build-list n2 (λ (x) (remainder x n1)))
                       (signal-take s n2))))
 
     (test-case "Can cascade counters"
@@ -98,18 +98,18 @@
                [s1 (register 0 (if~ e (static 0) (add1~ s1)))]
                [e (=~ s1 (static (sub1 n1)))]
                [s2 (register/e 0 e (add1~ s2))])
-        (check-equal? (build-list n2 (lambda (x) (quotient x n1)))
+        (check-equal? (build-list n2 (λ (x) (quotient x n1)))
                       (signal-take s2 n2))))
 
     (test-case "Can create a counter as a Medvedev machine"
       (letrec ([tick (signal #f #t #f #t #t #f)]
-               [s (medvedev 0 (lambda (n e) (if e (add1 n) n)) tick)]
+               [s (medvedev 0 (λ (n e) (if e (add1 n) n)) tick)]
                [l (list 0 0 1 1 2 3 3)])
         (check-equal? l (signal-take s (length l)))))
 
     (test-case "Can generate pulses with a Mealy machine"
       (letrec ([tick (signal #f #t #f #t #t #f)]
-               [s (mealy 0 (lambda (n e)
+               [s (mealy 0 (λ (n e)
                              (if e
                                  (list (add1 n) (= n 1))
                                  (list n #f)))
@@ -119,8 +119,8 @@
 
     (test-case "Can generate pulses with a Moore machine"
       (letrec ([tick (signal #f #t #f #t #t #f)]
-               [s (moore 0 (lambda (n e) (if e (add1 n) n))
-                           (lambda (n)   (= n 1))
+               [s (moore 0 (λ (n e) (if e (add1 n) n))
+                           (λ (n)   (= n 1))
                            tick)]
                [l (list #f #f #t #t #f #f #f)])
         (check-equal? l (signal-take s (length l)))))

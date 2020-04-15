@@ -1,5 +1,6 @@
 #lang racket
 
+; TODO add contracts
 (provide (all-defined-out))
 
 ; A signal represents an infinite list of values.
@@ -16,16 +17,16 @@
   ((cdr x)))
 
 (define (signal-drop x n)
-  (if (<= n 0)
-    x
-    (signal-drop (signal-rest x) (sub1 n))))
+  (if (positive? n)
+    (signal-drop (signal-rest x) (sub1 n))
+    x))
 
 ; Return a list with the first n samples of a signal s.
 ; TODO Should we use for/fold to avoid recursion?
 (define (signal-take s n)
-  (if (<= n 0)
-    empty
-    (cons (signal-first s) (signal-take (signal-rest s) (sub1 n)))))
+  (if (positive? n)
+    (cons (signal-first s) (signal-take (signal-rest s) (sub1 n)))
+    empty))
 
 ; Define a signal with an initial sample x0 and an expression expr
 ; that compute a signal with the following samples.
@@ -33,8 +34,8 @@
 (define-syntax-rule (make-signal x0 expr)
   (cons x0
     (let ([res (void)])
-      (lambda ()
-        (cond [(void? res) (set! res expr)])
+      (λ ()
+        (when (void? res) (set! res expr))
         res))))
 
 ; Create a signal that is the result of f
@@ -69,39 +70,39 @@
   (list->signal x))
 
 ; Helpers to create lambda functions that work on signals.
-(define-syntax lambda~
+(define-syntax λ~
   (syntax-rules ()
     ; Create a function with fixed arity.
-    [(lambda~ (x ...) body ...)
-     (letrec ([f (lambda (x ...) body ...)]
-              [g (lambda (x ...)
+    [(λ~ (x ...) body ...)
+     (letrec ([f (λ (x ...) body ...)]
+              [g (λ (x ...)
                    (make-signal
                      (f (signal-first x) ...)
                      (g (signal-rest x) ...)))])
        g)]
     ; Convert a function f with unspecified arity.
-    [(lambda~ f)
-     (letrec ([g (lambda x
+    [(λ~ f)
+     (letrec ([g (λ x
                    (make-signal
                      (apply f (map signal-first x))
                      (apply g (map signal-rest x))))])
        g)]
     ; Create a function with variable arity.
-    [(lambda~ x body ...)
-     (lambda~ (lambda x a body ...))]))
+    [(λ~ x body ...)
+     (λ~ (λ x a body ...))]))
 
 ; Define functions that work on signals.
 (define-syntax define~
   (syntax-rules ()
     ; Create a function with fixed arity.
     [(define~ (name x ...) body ...)
-     (define name (lambda~ (x ...) body ...))]
+     (define name (λ~ (x ...) body ...))]
     ; Convert a function f with unspecified arity.
     [(define~ name f)
-     (define name (lambda~ f))]
+     (define name (λ~ f))]
     ; Create a function with variable arity.
     [(define~ (name . x) body ...)
-     (define name (lambda~ x body ...))]))
+     (define name (λ~ x body ...))]))
 
 ; Versions of standard functions and special forms that work on signals.
 (define~ (if~ c x y)
@@ -138,25 +139,25 @@
 
 ; Register with synchronous reset and enable.
 (define-syntax-rule (register/re q0 r e d)
-  (feedback q0 (lambda (q) (if~ r q0 (if~ e d q)))))
+  (feedback q0 (λ (q) (if~ r q0 (if~ e d q)))))
 
 ; Transform a plain function into a Medvedev machine.
 ; medvedev : ∀(s i) s (s i -> s) (Signal i) -> (Signal s)
 (define (medvedev s0 f x)
-  (feedback-first s0 ((lambda~ f) x)))
+  (feedback-first s0 ((λ~ f) x)))
 
 ; Transform a plain function into a Mealy machine.
 ; TODO use pairs instead of lists?
 ; mealy : ∀(s i o) s (s i -> (List s o)) (Signal i) -> (Signal o)
 (define (mealy s0 f x)
   (letrec ([s  (register s0 (first~ so))]
-           [so ((lambda~ f) s  x)])
+           [so ((λ~ f) s  x)])
     (second~ so)))
 
 ; Transform a pair of functions into a Moore machine.
 ; moore : ∀(s i o) s (s i -> s) (s -> o) (Signal i) -> (Signal o)
 (define (moore s0 f g x)
-  ((lambda~ g) (medvedev s0 f x)))
+  ((λ~ g) (medvedev s0 f x)))
 
 ; This function is translated from the veryUnsafeSynchronizer function in Cλash.
 ; It assumes the following timing for signals:
@@ -167,8 +168,8 @@
     ; If periods are the same, return x.
     ; In Cλash, a type conversion from source to target domain is performed.
     x
-    (letrec ([resample-relative (lambda (t u)
-                                  (if (<= t 0)
-                                    (make-signal (signal-first u) (resample-relative (+ t t2) u))
-                                    (resample-relative (- t t1) (signal-rest u))))])
+    (letrec ([resample-relative (λ (t u)
+                                  (if (positive? t)
+                                    (resample-relative (- t t1) (signal-rest u))
+                                    (make-signal (signal-first u) (resample-relative (+ t t2) u))))])
       (resample-relative 0 x))))

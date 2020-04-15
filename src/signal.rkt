@@ -33,9 +33,9 @@
 ; The expression will be wrapped into a memoized lambda.
 (define-syntax-rule (make-signal x0 expr)
   (cons x0
-    (let ([res (void)])
+    (let ([res #f])
       (λ ()
-        (when (void? res) (set! res expr))
+        (unless res (set! res expr))
         res))))
 
 ; Create a signal that is the result of f

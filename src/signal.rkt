@@ -1,20 +1,49 @@
 #lang racket
 
-; TODO add contracts
-(provide (all-defined-out))
+(provide
+    (contract-out
+        [signal-first (-> signal? any)]
+        [signal-rest  (-> signal? signal?)]
+        [signal-drop  (-> signal? natural-number/c signal?)]
+        [signal-take  (-> signal? natural-number/c (non-empty-listof any/c))]
+        [static       (-> any/c   signal?)]
+        [static?      (-> signal? boolean?)]
+        [list->signal (-> (non-empty-listof any/c) signal?)]
+        [rename signal* signal
+                      (->* () () #:rest (non-empty-listof any/c) signal?)]
+        [if~          (-> signal? signal? signal? signal?)]
+        [add1~        (-> signal-of-number? signal-of-number?)]
+        [sub1~        (-> signal-of-number? signal-of-number?)]
+        [first~       (-> signal-of-list? signal?)]
+        [second~      (-> signal-of-list? signal?)]
+        [+~           (->* () () #:rest (listof           signal-of-number?) signal-of-number?)]
+        [-~           (->* () () #:rest (non-empty-listof signal-of-number?) signal-of-number?)]
+        [*~           (->* () () #:rest (listof           signal-of-number?) signal-of-number?)]
+        [=~           (->* () () #:rest (non-empty-listof signal-of-number?) signal-of-boolean?)]
+        [and~         (-> signal? signal? signal?)]
+        [or~          (-> signal? signal? signal?)]
+        [not~         (-> signal? signal?)]
+        [medvedev     (-> any/c (-> any/c any/c any/c) signal?     signal?)]
+        [mealy        (-> any/c (-> any/c any/c (non-empty-listof any/c)) signal? signal?)]
+        [moore        (-> any/c (-> any/c any/c any/c) (-> any/c any/c)   signal? signal?)]
+        [resample     (-> positive? positive? signal? signal?)]
+        [signal-of    (-> (-> any/c boolean?) (-> signal? boolean?))])
+    register
+    register/r
+    register/e
+    register/re)
+
 
 ; A signal represents an infinite list of values.
 ;
-; In Silicate, a signal is defined as a pair (x0 . f) where
+; In Silicate, a signal is defined as a pair (x0, f) where
 ; - x0 is the first, or current sample
 ; - f  is a function that computes a signal with the next samples.
-
-; Alias the car function to read the first sample of a signal.
-(define signal-first car)
+(struct signal (first deferred-rest))
 
 ; Getting the rest of a signal consists in evaluating the right part of the pair.
 (define (signal-rest x)
-  ((cdr x)))
+  ((signal-deferred-rest x)))
 
 (define (signal-drop x n)
   (if (positive? n)
@@ -32,7 +61,7 @@
 ; that compute a signal with the following samples.
 ; The expression will be wrapped into a memoized lambda.
 (define-syntax-rule (make-signal x0 expr)
-  (cons x0
+  (signal x0
     (let ([res #f])
       (λ ()
         (unless res (set! res expr))
@@ -66,7 +95,7 @@
     (static (first l))
     (make-signal (first l) (list->signal (rest l)))))
 
-(define (signal . x)
+(define (signal* . x)
   (list->signal x))
 
 ; Helpers to create lambda functions that work on signals.
@@ -125,13 +154,24 @@
 (define~ *~ *)
 (define~ =~ =)
 
+; In Racket, and takes a variable number of arguments, but is not a function.
+(define~ (and~ x y)
+  (and x y))
+
+; In Racket, or takes a variable number of arguments, but is not a function.
+(define~ (or~ x y)
+  (or x y))
+
+(define~ (not~ x)
+  (not x))
+
 ; Simple register.
 (define-syntax-rule (register q0 d)
   (make-signal q0 d))
 
 ; Register with synchronous reset.
 (define-syntax-rule (register/r q0 r d)
-  (register q0 (if~ r q0 d)))
+  (register q0 (if~ r (static q0) d)))
 
 ; Register with enable.
 (define-syntax-rule (register/e q0 e d)
@@ -139,7 +179,7 @@
 
 ; Register with synchronous reset and enable.
 (define-syntax-rule (register/re q0 r e d)
-  (feedback q0 (λ (q) (if~ r q0 (if~ e d q)))))
+  (feedback q0 (λ (q) (if~ r (static q0) (if~ e d q)))))
 
 ; Transform a plain function into a Medvedev machine.
 ; medvedev : ∀(s i) s (s i -> s) (Signal i) -> (Signal s)
@@ -173,3 +213,13 @@
                                     (resample-relative (- t t1) (signal-rest u))
                                     (make-signal (signal-first u) (resample-relative (+ t t2) u))))])
       (resample-relative 0 x))))
+
+; For use in contracts. Returns a function that checks the given predicate on a signal.
+(define (signal-of p?)
+  (λ (s)
+    (p? (signal-first s))))
+
+; For use in contracts. Predicates to check various types of signals.
+(define signal-of-number?  (signal-of number?))
+(define signal-of-boolean? (signal-of boolean?))
+(define signal-of-list?    (signal-of list?))

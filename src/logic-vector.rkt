@@ -10,12 +10,15 @@
 
 (provide
     (contract-out
-      [logic-vector?       (-> any/c boolean?)]
-      [make-logic-vector   (->* (natural-number/c) (boolean?) logic-vector?)]
-      [logic-vector-length (-> logic-vector? natural-number/c)]
-      [logic-vector-ref    (-> logic-vector? natural-number/c boolean?)]
-      [list->logic-vector  (-> (listof boolean?) logic-vector?)]
-      [logic-vector->list  (-> logic-vector? (listof boolean?))]))
+      [logic-vector?        (-> any/c boolean?)]
+      [make-logic-vector    (->* (natural-number/c) (boolean?) logic-vector?)]
+      [rename logic-vector-len
+       logic-vector-length  (-> logic-vector? natural-number/c)]
+      [logic-vector-ref     (-> logic-vector? natural-number/c boolean?)]
+      [list->logic-vector   (-> (listof boolean?) logic-vector?)]
+      [logic-vector->list   (-> logic-vector? (listof boolean?))]
+      [logic-vector->string (-> logic-vector? string?)]
+      [string->logic-vector (-> string? logic-vector?)]))
 
 ; This gives the same result as (quotient n 8)
 (define (word-index n)
@@ -31,23 +34,17 @@
   ; Get the number of bytes to represent the vector internally.
   (define-values (q r) (quotient/remainder len 8))
   ; Add an extra byte if len is not divisible by the length of a word.
-  (define len-in-words (+ q (if (zero? r) 0 1)))
-  ; Create a byte vector filled as specified by the fill argument.
-  (define words (make-bytes len-in-words (if fill #xFF 0)))
-  ; If the vector has extra bits and is filled with ones,
-  ; set the last byte to 2^r - 1.
-  (when (and fill (not (zero? r)))
-    (bytes-set! words q (- (expt 2 r) 1)))
-  (logic-vector words len))
+  (define blen (+ q (if (zero? r) 0 1)))
+  (logic-vector
+    (make-bytes blen (if fill #xFF 0))
+    len))
 
-(define (logic-vector-length lv)
-  (logic-vector-len lv))
-
-; TODO contract on upper bound
 (define (logic-vector-ref lv n)
-  (bitwise-bit-set?
-      (bytes-ref (logic-vector-words lv) (word-index n))
-      (bit-index n)))
+  (and
+    (< n (logic-vector-len lv))
+    (bitwise-bit-set?
+        (bytes-ref (logic-vector-words lv) (word-index n))
+        (bit-index n))))
 
 ; Convert a list to a word.
 ; The first element of the list is the msb.
@@ -58,12 +55,6 @@
     ; then add the current bit.
     (bitwise-ior (arithmetic-shift res 1)
                  (if b 1 0))))
-
-; Convert a word to a list.
-; The first element of the list is the msb.
-(define (word->list w)
-  (for/list ([i (in-range 7 -1 -1)])
-    (bitwise-bit-set? w i)))
 
 (define (list->logic-vector l)
   ; Create a vector filled with zeros.
@@ -83,8 +74,34 @@
                empty]))
   res)
 
+(define (string->word s)
+  (for/fold ([res 0])
+            ([i (in-range (string-length s))])
+    (bitwise-ior (arithmetic-shift res 1)
+                 (if (eqv? (string-ref s i) #\1) 1 0))))
+
+(define (string->logic-vector s)
+  (define len (string-length s))
+  (define res (make-logic-vector len))
+  (define words (logic-vector-words res))
+  (for ([i (in-range (bytes-length words))]
+        [j (in-range (- len 8) -8 -8)]
+        [k (in-range len 0 -8)])
+    (bytes-set! words i (string->word (substring s (max 0 j) k))))
+  res)
+
+(define (in-reverse-range n)
+  (in-range (sub1 n) -1 -1))
+
 (define (logic-vector->list lv)
-  (define words (logic-vector-words lv))
-  (take-right (flatten (reverse (for/list ([i (in-range (bytes-length words))])
-                                  (word->list (bytes-ref words i)))))
-              (logic-vector-length lv)))
+  (define len (logic-vector-len lv))
+  (for/list ([i (in-reverse-range len)])
+    (logic-vector-ref lv i)))
+
+(define (logic-vector->string lv)
+  (define len (logic-vector-len lv))
+  (define res (make-string len))
+  (for ([i (in-range len)]
+        [j (in-reverse-range len)])
+    (string-set! res j (if (logic-vector-ref lv i) #\1 #\0)))
+  res)

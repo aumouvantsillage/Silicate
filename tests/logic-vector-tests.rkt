@@ -20,6 +20,11 @@
       (for ([i (in-range n)])
            (check-true (logic-vector-ref v i))))
 
+    (test-case "Out-of-bound access returns false"
+      (define n 12)
+      (define v (make-logic-vector n #t))
+      (check-false (logic-vector-ref v n)))
+
     (test-case "Can create a vector from a list"
       (define l (list #t #f #t #t #f #f #t #f #t #f #t #t #t #t #f #f #f #f))
       (define v (list->logic-vector l))
@@ -31,4 +36,17 @@
       (define l (list #t #f #t #t #f #f #t #f #t #f #t #t #t #t #f #f #f #f))
       (define v (list->logic-vector l))
       (check-equal? (logic-vector->list v)
-                    l))))
+                    l))
+
+    (test-case "Can create a vector from a string"
+      (define s "101100101011110000")
+      (define v (string->logic-vector s))
+      (for ([i (in-range (string-length s))])
+           (check-eqv? (logic-vector-ref v i)
+                       (eqv? (string-ref s (- (string-length s) i 1)) #\1))))
+
+    (test-case "Can convert a vector into a string"
+      (define l (list #t #f #t #t #f #f #t #f #t #f #t #t #t #t #f #f #f #f))
+      (define v (list->logic-vector l))
+      (check-equal? (logic-vector->string v)
+                    "101100101011110000"))))

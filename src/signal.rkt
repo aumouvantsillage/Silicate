@@ -11,6 +11,7 @@
         [list->signal (-> (non-empty-listof any/c) signal?)]
         [rename signal*
          signal       (->* () () #:rest (non-empty-listof any/c) signal?)]
+        [lift         (-> procedure? (->* () () #:rest (listof signal?) signal?))]
         [if~          (-> signal? signal? signal? signal?)]
         [add1~        (-> signal-of-number? signal-of-number?)]
         [sub1~        (-> signal-of-number? signal-of-number?)]
@@ -28,6 +29,8 @@
         [moore        (-> any/c (-> any/c any/c any/c) (-> any/c any/c)   signal? signal?)]
         [resample     (-> positive? positive? signal? signal?)]
         [signal-of    (-> (-> any/c boolean?) (-> signal? boolean?))])
+    λ~
+    define~
     register
     register/r
     register/e
@@ -51,7 +54,6 @@
     x))
 
 ; Return a list with the first n samples of a signal s.
-; TODO Should we use for/fold to avoid recursion?
 (define (signal-take s n)
   (if (positive? n)
     (cons (signal-first s) (signal-take (signal-rest s) (sub1 n)))
@@ -87,15 +89,23 @@
 (define (static? s)
   (eq? s (signal-rest s)))
 
-; Convert a list to a signal.
-; FIXME Error on empty list
+; Convert a non-empty list to a signal.
 (define (list->signal l)
   (if (= (length l) 1)
     (static (first l))
     (make-signal (first l) (list->signal (rest l)))))
 
+; Convert the arguments to a signal.
 (define (signal* . x)
   (list->signal x))
+
+; Convert a function f with unspecified arity.
+(define (lift f)
+  (letrec ([g (λ x
+                (make-signal
+                  (apply f (map signal-first x))
+                  (apply g (map signal-rest x))))])
+    g))
 
 ; Helpers to create lambda functions that work on signals.
 (define-syntax λ~
@@ -108,16 +118,9 @@
                      (f (signal-first x) ...)
                      (g (signal-rest x) ...)))])
        g)]
-    ; Convert a function f with unspecified arity.
-    [(λ~ f)
-     (letrec ([g (λ x
-                   (make-signal
-                     (apply f (map signal-first x))
-                     (apply g (map signal-rest x))))])
-       g)]
     ; Create a function with variable arity.
     [(λ~ x body ...)
-     (λ~ (λ x a body ...))]))
+     (lift (λ x body ...))]))
 
 ; Define functions that work on signals.
 (define-syntax define~
@@ -125,12 +128,12 @@
     ; Create a function with fixed arity.
     [(define~ (name x ...) body ...)
      (define name (λ~ (x ...) body ...))]
-    ; Convert a function f with unspecified arity.
-    [(define~ name f)
-     (define name (λ~ f))]
     ; Create a function with variable arity.
     [(define~ (name . x) body ...)
-     (define name (λ~ x body ...))]))
+     (define name (λ~ x body ...))]
+    ; Convert a function f with unspecified arity.
+    [(define~ name f)
+     (define name (lift f))]))
 
 ; Versions of standard functions and special forms that work on signals.
 (define~ (if~ c x y)
@@ -183,20 +186,20 @@
 ; Transform a plain function into a Medvedev machine.
 ; medvedev : ∀(s i) s (s i -> s) (Signal i) -> (Signal s)
 (define (medvedev s0 f x)
-  (feedback-first s0 ((λ~ f) x)))
+  (feedback-first s0 ((lift f) x)))
 
 ; Transform a plain function into a Mealy machine.
 ; TODO use pairs instead of lists?
 ; mealy : ∀(s i o) s (s i -> (List s o)) (Signal i) -> (Signal o)
 (define (mealy s0 f x)
   (letrec ([s  (register s0 (first~ so))]
-           [so ((λ~ f) s  x)])
+           [so ((lift f) s  x)])
     (second~ so)))
 
 ; Transform a pair of functions into a Moore machine.
 ; moore : ∀(s i o) s (s i -> s) (s -> o) (Signal i) -> (Signal o)
 (define (moore s0 f g x)
-  ((λ~ g) (medvedev s0 f x)))
+  ((lift g) (medvedev s0 f x)))
 
 ; This function is translated from the veryUnsafeSynchronizer function in Cλash.
 ; It assumes the following timing for signals:

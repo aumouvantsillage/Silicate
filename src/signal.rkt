@@ -210,11 +210,10 @@
     ; If periods are the same, return x.
     ; In Cλash, a type conversion from source to target domain is performed.
     x
-    (letrec ([resample-relative (λ (t u)
-                                  (if (positive? t)
-                                    (resample-relative (- t t1) (signal-rest u))
-                                    (make-signal (signal-first u) (resample-relative (+ t t2) u))))])
-      (resample-relative 0 x))))
+    (let resample-relative ([t 0] [u x])
+      (if (positive? t)
+        (resample-relative (- t t1) (signal-rest u))
+        (make-signal (signal-first u) (resample-relative (+ t t2) u))))))
 
 ; For use in contracts. Returns a function that checks the given predicate on a signal.
 (define (signal-of p?)

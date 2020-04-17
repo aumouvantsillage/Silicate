@@ -1,6 +1,7 @@
 #lang racket
 
 ; This module partly reimplements data/bit-vector.
+;
 ; Motivations:
 ; * bit-vector does not provide access to its internal data representation,
 ;   which prevents implementing efficient arithmetics.
@@ -10,98 +11,114 @@
 
 (provide
     (contract-out
-      [logic-vector?        (-> any/c boolean?)]
-      [make-logic-vector    (->* (natural-number/c) (boolean?) logic-vector?)]
-      [rename logic-vector-len
-       logic-vector-length  (-> logic-vector? natural-number/c)]
-      [logic-vector-ref     (-> logic-vector? natural-number/c boolean?)]
-      [list->logic-vector   (-> (listof boolean?) logic-vector?)]
-      [logic-vector->list   (-> logic-vector? (listof boolean?))]
-      [logic-vector->string (-> logic-vector? string?)]
-      [string->logic-vector (-> string? logic-vector?)]))
+      [logic-vector?         (-> any/c boolean?)]
+      [make-logic-vector     (->* (natural-number/c) (boolean?) logic-vector?)]
+      [logic-vector-length   (-> logic-vector? natural-number/c)]
+      [logic-vector-ref      (-> logic-vector? natural-number/c boolean?)]
+      [list->logic-vector    (-> (listof boolean?) logic-vector?)]
+      [logic-vector->list    (-> logic-vector? (listof boolean?))]
+      [logic-vector->string  (-> logic-vector? string?)]
+      [string->logic-vector  (-> string? logic-vector?)]
+      [integer->logic-vector (->* (exact-integer? exact-integer?) (boolean?) logic-vector?)]
+      [logic-vector->integer (-> logic-vector? integer?)]))
 
 ; This gives the same result as (quotient n 8)
-(define (word-index n)
+(define (logic-vector-byte-index n)
   (arithmetic-shift n -3))
 
 ; This gives the same result as (remainder n 8)
-(define (bit-index n)
+(define (logic-vector-bit-index n)
   (bitwise-and n 7))
 
-(struct logic-vector (words len))
+(struct logic-vector (bytes length signed?))
 
-(define (make-logic-vector len [fill #f])
-  ; Get the number of bytes to represent the vector internally.
-  (define-values (q r) (quotient/remainder len 8))
-  ; Add an extra byte if len is not divisible by the length of a word.
-  (define blen (+ q (if (zero? r) 0 1)))
-  (logic-vector
-    (make-bytes blen (if fill #xFF 0))
-    len))
+(define (make-logic-vector len [signed #f])
+  (define-values (bytes-len extra-bits-len) (quotient/remainder len 8))
+  (logic-vector (make-bytes (+ bytes-len (if (zero? extra-bits-len) 0 1)) 0)
+                len signed))
 
 (define (logic-vector-ref lv n)
-  (and
-    (< n (logic-vector-len lv))
-    (bitwise-bit-set?
-        (bytes-ref (logic-vector-words lv) (word-index n))
-        (bit-index n))))
+  (cond [(< n (logic-vector-length lv))
+         (bitwise-bit-set?
+             (bytes-ref (logic-vector-bytes lv) (logic-vector-byte-index n))
+             (logic-vector-bit-index n))]
+        [(logic-vector-signed? lv)
+         (logic-vector-msb lv)]
+        [else
+         #f]))
 
-; Convert a list to a word.
-; The first element of the list is the msb.
-(define (list->word l)
-  (for/fold ([res 0])
-            ([b (in-list l)])
-    ; Shift the accumulator left by one bit,
-    ; then add the current bit.
-    (bitwise-ior (arithmetic-shift res 1)
-                 (if b 1 0))))
+(define (logic-vector-msb lv)
+  (logic-vector-ref lv (sub1 (logic-vector-length lv))))
 
-(define (list->logic-vector l)
-  ; Create a vector filled with zeros.
-  (define res (make-logic-vector (length l)))
-  (define words (logic-vector-words res))
-  (for/fold ([bv l])
-            ([i (in-range (bytes-length words))])
-        (cond [(>= (length bv) 8)
-               ; Extract the least-significant bits.
-               (define-values (left right) (split-at-right bv 8))
-               ; Pack them into a byte and store it into the result.
-               (bytes-set! words i (list->word right))
-               ; Continue with the remaining bits.
-               left]
-              [else
-               (bytes-set! words i (list->word bv))
-               empty]))
-  res)
+(define (logic-vector-negative? lv)
+  (and (logic-vector-signed? lv) (logic-vector-msb lv)))
 
-(define (string->word s)
-  (for/fold ([res 0])
-            ([i (in-range (string-length s))])
-    (bitwise-ior (arithmetic-shift res 1)
-                 (if (eqv? (string-ref s i) #\1) 1 0))))
-
-(define (string->logic-vector s)
-  (define len (string-length s))
-  (define res (make-logic-vector len))
-  (define words (logic-vector-words res))
-  (for ([i (in-range (bytes-length words))]
-        [j (in-range (- len 8) -8 -8)]
-        [k (in-range len 0 -8)])
-    (bytes-set! words i (string->word (substring s (max 0 j) k))))
-  res)
+; This function is used only internally, so we don't need to check
+; (< n (logic-vector-length lv))
+(define (logic-vector-set! lv n b)
+  (define byte-index (logic-vector-byte-index n))
+  (define bit-index  (logic-vector-bit-index  n))
+  (define lv-bytes   (logic-vector-bytes      lv))
+  (define old-byte   (bytes-ref lv-bytes byte-index))
+  (define old-bit    (bitwise-bit-set? old-byte bit-index))
+  (unless (eq? b old-bit)
+    (define new-byte (bitwise-xor old-byte (arithmetic-shift 1 bit-index)))
+    (bytes-set! lv-bytes byte-index new-byte)))
 
 (define (in-reverse-range n)
   (in-range (sub1 n) -1 -1))
 
+(define (list->logic-vector lst)
+  (define len (length lst))
+  (define lv (make-logic-vector len))
+  (for ([i (in-reverse-range len)]
+        [b (in-list lst)])
+    (logic-vector-set! lv i b))
+  lv)
+
 (define (logic-vector->list lv)
-  (define len (logic-vector-len lv))
+  (define len (logic-vector-length lv))
   (for/list ([i (in-reverse-range len)])
     (logic-vector-ref lv i)))
 
-(define (logic-vector->string lv)
-  (define len (logic-vector-len lv))
-  (define res (make-string len))
+(define (string->logic-vector str)
+  (define len (string-length str))
+  (define lv (make-logic-vector len))
   (for ([i (in-range len)]
         [j (in-reverse-range len)])
-    (string-set! res j (if (logic-vector-ref lv i) #\1 #\0)))
-  res)
+    (when (eqv? (string-ref str i) #\1)
+      (logic-vector-set! lv j #t)))
+  lv)
+
+(define (logic-vector->string lv)
+  (define len (logic-vector-length lv))
+  (define str (make-string len))
+  (for ([i (in-range len)]
+        [j (in-reverse-range len)])
+    (string-set! str j (if (logic-vector-ref lv i) #\1 #\0)))
+  str)
+
+(define (logic-vector->integer lv)
+  (define lv-bytes (logic-vector-bytes lv))
+  (define bytes-len (bytes-length lv-bytes))
+  ; Pack all bytes into an integer, starting from the most significant.
+  (define raw (for/fold ([acc 0])
+                        ([i (in-reverse-range bytes-len)])
+                ; Shift-left the accumulator and insert the current byte.
+                (bitwise-ior (arithmetic-shift acc 8)
+                             (bytes-ref lv-bytes i))))
+  ; Compute a mask to discard extra bits in the last byte.
+  (define mask (sub1 (arithmetic-shift 1 (logic-vector-length lv))))
+  ; If lv represents a signed negative, complete the raw value.
+  (if (logic-vector-negative? lv)
+      (bitwise-not (bitwise-and mask (bitwise-not raw)))
+      (bitwise-and mask raw)))
+
+(define (integer->logic-vector val len [signed #f])
+  (define lv (make-logic-vector len signed))
+  (define lv-bytes (logic-vector-bytes lv))
+  (for/fold ([v val])
+            ([i (in-range (bytes-length lv-bytes))])
+    (bytes-set! lv-bytes i (bitwise-and #xFF v))
+    (arithmetic-shift v -8))
+  lv)

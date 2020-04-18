@@ -27,6 +27,14 @@
                     l)
       (check-pred static? (signal-drop s (sub1 (length l)))))
 
+    (test-case "Can alias a signal"
+      (define l (range 1 5))
+      (define a (signal-alias s))
+      (define s (list->signal l))
+      (check-equal? (signal-take a (length l))
+                    (signal-take s (length l)))
+      (check-pred static? (signal-drop s (sub1 (length l)))))
+
     (test-case "Can delay a signal"
       (define l (range 1 5))
       (define s1 (list->signal l))

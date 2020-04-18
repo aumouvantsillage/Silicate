@@ -1,34 +1,39 @@
 #lang racket
 
 (provide
-    (contract-out
-        [signal-first (-> signal? any)]
-        [signal-rest  (-> signal? signal?)]
-        [signal-drop  (-> signal? natural-number/c signal?)]
-        [signal-take  (-> signal? natural-number/c (non-empty-listof any/c))]
-        [static       (-> any/c   signal?)]
-        [static?      (-> signal? boolean?)]
-        [list->signal (-> (non-empty-listof any/c) signal?)]
-        [rename signal*
-         signal       (->* () () #:rest (non-empty-listof any/c) signal?)]
-        [lift         (-> procedure? (->* () () #:rest (listof signal?) signal?))]
-        [if~          (-> signal? signal? signal? signal?)]
-        [add1~        (-> signal-of-number? signal-of-number?)]
-        [sub1~        (-> signal-of-number? signal-of-number?)]
-        [first~       (-> signal-of-list? signal?)]
-        [second~      (-> signal-of-list? signal?)]
-        [+~           (->* () () #:rest (listof           signal-of-number?) signal-of-number?)]
-        [-~           (->* () () #:rest (non-empty-listof signal-of-number?) signal-of-number?)]
-        [*~           (->* () () #:rest (listof           signal-of-number?) signal-of-number?)]
-        [=~           (->* () () #:rest (non-empty-listof signal-of-number?) signal-of-boolean?)]
-        [and~         (-> signal? signal? signal?)]
-        [or~          (-> signal? signal? signal?)]
-        [not~         (-> signal? signal?)]
-        [medvedev     (-> any/c (-> any/c any/c any/c) signal?     signal?)]
-        [mealy        (-> any/c (-> any/c any/c (non-empty-listof any/c)) signal? signal?)]
-        [moore        (-> any/c (-> any/c any/c any/c) (-> any/c any/c)   signal? signal?)]
-        [resample     (-> positive? positive? signal? signal?)]
-        [signal-of    (-> (-> any/c boolean?) (-> signal? boolean?))])
+    signal-first
+    signal-rest
+    signal-drop
+    signal-take
+    static
+    static?
+    list->signal
+    (rename-out [signal* signal])
+    lift
+    if~
+    add1~
+    sub1~
+    remainder~
+    zero?~
+    first~
+    second~
+    +~
+    -~
+    *~
+    =~
+    <~
+    and~
+    or~
+    not~
+    xor~
+    vector-ref~
+    vector-set~
+    medvedev
+    mealy
+    moore
+    resample
+    signal-of
+    signal-alias
     λ~
     define~
     register
@@ -39,14 +44,19 @@
 
 ; A signal represents an infinite list of values.
 ;
-; In Silicate, a signal is defined as a pair (x0, f) where
-; - x0 is the first, or current sample
-; - f  is a function that computes a signal with the next samples.
-(struct signal (first deferred-rest))
+; In Silicate, a signal item is defined as a pair (x0, f) where
+; - x0 is the current sample
+; - f  is a function that computes the next item.
+;
+; A signal itself is a function that returns a signal item.
+(struct signal-item (first rest))
 
-; Getting the rest of a signal consists in evaluating the right part of the pair.
+; Return the first element of a signal item.
+(define (signal-first x)
+  (signal-item-first (x)))
+
 (define (signal-rest x)
-  ((signal-deferred-rest x)))
+  (signal-item-rest (x)))
 
 (define (signal-drop x n)
   (if (positive? n)
@@ -63,11 +73,13 @@
 ; that compute a signal with the following samples.
 ; The expression will be wrapped into a memoized lambda.
 (define-syntax-rule (make-signal x0 expr)
-  (signal x0
-    (let ([res #f])
-      (λ ()
-        (unless res (set! res expr))
-        res))))
+  (let ([res #f])
+    (λ ()
+      (unless res (set! res (signal-item x0 expr)))
+      res)))
+
+(define-syntax-rule (signal-alias expr)
+  (λ () (expr)))
 
 ; Create a signal y = (f y x ...)
 (define-syntax-rule (feedback-first y0 (f x ...))
@@ -145,6 +157,12 @@
 (define~ (sub1~ x)
   (sub1 x))
 
+(define~ (zero?~ x)
+  (zero? x))
+
+(define~ (remainder~ x y)
+  (remainder x y))
+
 (define~ (first~ x)
   (first x))
 
@@ -155,6 +173,7 @@
 (define~ -~ -)
 (define~ *~ *)
 (define~ =~ =)
+(define~ <~ <)
 
 ; In Racket, and takes a variable number of arguments, but is not a function.
 (define~ (and~ x y)
@@ -166,6 +185,17 @@
 
 (define~ (not~ x)
   (not x))
+
+(define~ (xor~ x y)
+  (xor x y))
+
+(define~ (vector-ref~ vec pos)
+  (vector-ref vec pos))
+
+(define~ (vector-set~ vec pos val)
+  (define res (vector-copy vec))
+  (vector-set! res pos val)
+  res)
 
 ; Simple register.
 (define-syntax-rule (register q0 d)
@@ -222,5 +252,8 @@
 
 ; For use in contracts. Predicates to check various types of signals.
 (define signal-of-number?  (signal-of number?))
+(define signal-of-integer? (signal-of integer?))
+(define signal-of-natural? (signal-of exact-nonnegative-integer?))
 (define signal-of-boolean? (signal-of boolean?))
 (define signal-of-list?    (signal-of list?))
+(define signal-of-vector?  (signal-of vector?))

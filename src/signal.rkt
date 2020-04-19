@@ -31,8 +31,8 @@
 ; In Silicate, a signal is defined as a function that returns a pair (x0 . f) where
 ; - x0 is the first sample
 ; - f  is a signal.
-(define signal/c procedure?)
-  ; (-> pair?))
+(define signal/c
+  (-> pair?))
 
 ; Return the first sample of a signal.
 (define (signal-first x)

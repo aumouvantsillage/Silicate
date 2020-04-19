@@ -1,123 +1,115 @@
 #lang racket
 
 (provide
-    signal-first
-    signal-rest
-    signal-drop
-    signal-take
-    static
-    static?
-    list->signal
-    (rename-out [signal* signal])
-    lift
-    if~
-    add1~
-    sub1~
-    remainder~
-    zero?~
-    first~
-    second~
-    +~
-    -~
-    *~
-    =~
-    <~
-    and~
-    or~
-    not~
-    xor~
-    vector-ref~
-    vector-set~
-    medvedev
-    mealy
-    moore
-    resample
-    signal-of
-    signal-alias
-    λ~
-    define~
-    register
-    register/r
-    register/e
-    register/re)
-
+  (contract-out
+    [signal/c     contract?]
+    [signal-first (-> signal/c any)]
+    [signal-rest  (-> signal/c signal/c)]
+    [signal-drop  (-> signal/c exact-nonnegative-integer? signal/c)]
+    [signal-take  (-> signal/c exact-nonnegative-integer? (non-empty-listof any/c))]
+    [static       (-> any/c signal/c)]
+    [static?      (-> signal/c boolean?)]
+    [list->signal (-> (non-empty-listof any/c) signal/c)]
+    [rename signal*
+     signal       (->* () () #:rest (non-empty-listof any/c) signal/c)]
+    [lift         (-> procedure? (->* () () #:rest (listof signal/c) signal/c))]
+    [medvedev     (-> any/c (-> any/c any/c any) signal/c signal/c)]
+    [mealy        (-> any/c (-> any/c any/c (non-empty-listof any/c)) signal/c signal/c)]
+    [moore        (-> any/c (-> any/c any/c any) (-> any/c any) signal/c signal/c)]
+    [resample     (-> exact-nonnegative-integer? exact-nonnegative-integer? signal/c signal/c)]
+    [if~          (-> signal/c signal/c signal/c signal/c)])
+  signal-proxy
+  λ~
+  define~
+  register
+  register/r
+  register/e
+  register/re)
 
 ; A signal represents an infinite list of values.
 ;
-; In Silicate, a signal item is defined as a pair (x0, f) where
-; - x0 is the current sample
-; - f  is a function that computes the next item.
-;
-; A signal itself is a function that returns a signal item.
-(struct signal-item (first rest))
+; In Silicate, a signal is defined as a function that returns a pair (x0 . f) where
+; - x0 is the first sample
+; - f  is a signal.
+(define signal/c procedure?)
+  ; (-> pair?))
 
-; Return the first element of a signal item.
+; Return the first sample of a signal.
 (define (signal-first x)
-  (signal-item-first (x)))
+  (car (x)))
 
+; Return the signal starting at the second sample of x.
 (define (signal-rest x)
-  (signal-item-rest (x)))
+  (cdr (x)))
 
+; Create a signal with an initial sample x0 and an expression expr
+; that compute a signal with the following samples.
+; Memoize the pair (x0 . expr) to prevent multiple evaluations
+; for signals that contain feedback loops.
+(define-syntax-rule (make-signal x0 expr)
+  (let ([res #f])
+    (λ ()
+      (unless res (set! res (cons x0 expr)))
+      res)))
+
+; Create a signal as a proxy of another signal.
+; This will be useful when we want to create signals that depend on other
+; signals defined later. Especially in circuits with circular dependencies.
+(define-syntax-rule (signal-proxy expr)
+  (λ () (expr)))
+
+; Create a signal that is fed back as the first argument of f:
+; y = y0 . (f y x ...))
+(define-syntax-rule (feedback-first y0 (f x ...))
+  (letrec ([y (make-signal y0 (f y x ...))]) y))
+
+; Create a signal that is fed back as the last argument of f:
+; y = y0 . (f x ... y))
+(define-syntax-rule (feedback-last y0 (f x ...))
+  (letrec ([y (make-signal y0 (f x ... y))]) y))
+
+; Create a signal that is fed back as the argument of f:
+; y = y0 . (f y).
+(define-syntax-rule (feedback y0 f)
+  (feedback-first y0 (f)))
+
+; Create a constant signal with value x0.
+(define (static x0)
+  (feedback x0 identity))
+
+; Test whether a signal is static.
+(define (static? x)
+  (equal? x (signal-rest x)))
+
+; Return a signal that starts at the n-th sample of x.
 (define (signal-drop x n)
   (if (positive? n)
     (signal-drop (signal-rest x) (sub1 n))
     x))
 
-; Return a list with the first n samples of a signal s.
-(define (signal-take s n)
+; Return a list with the first n samples of a signal x.
+(define (signal-take x n)
   (if (positive? n)
-    (cons (signal-first s) (signal-take (signal-rest s) (sub1 n)))
+    (cons (signal-first x) (signal-take (signal-rest x) (sub1 n)))
     empty))
 
-; Define a signal with an initial sample x0 and an expression expr
-; that compute a signal with the following samples.
-; The expression will be wrapped into a memoized lambda.
-(define-syntax-rule (make-signal x0 expr)
-  (let ([res #f])
-    (λ ()
-      (unless res (set! res (signal-item x0 expr)))
-      res)))
-
-(define-syntax-rule (signal-alias expr)
-  (λ () (expr)))
-
-; Create a signal y = (f y x ...)
-(define-syntax-rule (feedback-first y0 (f x ...))
-  (letrec ([y (make-signal y0 (f y x ...))]) y))
-
-; Create a signal y = (f x ... y)
-(define-syntax-rule (feedback-last y0 (f x ...))
-  (letrec ([y (make-signal y0 (f x ... y))]) y))
-
-; Create a signal y = (f y).
-(define-syntax-rule (feedback y0 f)
-  (feedback-first y0 (f)))
-
-; Create a static signal.
-(define (static x0)
-  (feedback x0 identity))
-
-; Test whether a signal is static.
-(define (static? s)
-  (eq? s (signal-rest s)))
-
 ; Convert a non-empty list to a signal.
-(define (list->signal l)
-  (if (= (length l) 1)
-    (static (first l))
-    (make-signal (first l) (list->signal (rest l)))))
+(define (list->signal lst)
+  (if (= (length lst) 1)
+    (static (first lst))
+    (make-signal (first lst) (list->signal (rest lst)))))
 
 ; Convert the arguments to a signal.
 (define (signal* . x)
   (list->signal x))
 
-; Convert a function f with unspecified arity.
+; Convert a function f into a function that works on signals.
 (define (lift f)
-  (letrec ([g (λ x
-                (make-signal
-                  (apply f (map signal-first x))
-                  (apply g (map signal-rest x))))])
-    g))
+  (define (g . x)
+    (make-signal
+      (apply f (map signal-first x))
+      (apply g (map signal-rest  x))))
+  g)
 
 ; Helpers to create lambda functions that work on signals.
 (define-syntax λ~
@@ -134,7 +126,7 @@
     [(λ~ x body ...)
      (lift (λ x body ...))]))
 
-; Define functions that work on signals.
+; Helpers to define functions that work on signals.
 (define-syntax define~
   (syntax-rules ()
     ; Create a function with fixed arity.
@@ -147,57 +139,11 @@
     [(define~ name f)
      (define name (lift f))]))
 
-; Versions of standard functions and special forms that work on signals.
+; A version of if that works on signals.
 (define~ (if~ c x y)
   (if c x y))
 
-(define~ (add1~ x)
-  (add1 x))
-
-(define~ (sub1~ x)
-  (sub1 x))
-
-(define~ (zero?~ x)
-  (zero? x))
-
-(define~ (remainder~ x y)
-  (remainder x y))
-
-(define~ (first~ x)
-  (first x))
-
-(define~ (second~ x)
-  (second x))
-
-(define~ +~ +)
-(define~ -~ -)
-(define~ *~ *)
-(define~ =~ =)
-(define~ <~ <)
-
-; In Racket, and takes a variable number of arguments, but is not a function.
-(define~ (and~ x y)
-  (and x y))
-
-; In Racket, or takes a variable number of arguments, but is not a function.
-(define~ (or~ x y)
-  (or x y))
-
-(define~ (not~ x)
-  (not x))
-
-(define~ (xor~ x y)
-  (xor x y))
-
-(define~ (vector-ref~ vec pos)
-  (vector-ref vec pos))
-
-(define~ (vector-set~ vec pos val)
-  (define res (vector-copy vec))
-  (vector-set! res pos val)
-  res)
-
-; Simple register.
+; Create a signal that delays d through a simple register.
 (define-syntax-rule (register q0 d)
   (make-signal q0 d))
 
@@ -219,12 +165,11 @@
   (feedback-first s0 ((lift f) x)))
 
 ; Transform a plain function into a Mealy machine.
-; TODO use pairs instead of lists?
 ; mealy : ∀(s i o) s (s i -> (List s o)) (Signal i) -> (Signal o)
 (define (mealy s0 f x)
-  (letrec ([s  (register s0 (first~ so))]
+  (letrec ([s  (register s0 ((lift first) so))]
            [so ((lift f) s  x)])
-    (second~ so)))
+    ((lift second) so)))
 
 ; Transform a pair of functions into a Moore machine.
 ; moore : ∀(s i o) s (s i -> s) (s -> o) (Signal i) -> (Signal o)
@@ -244,16 +189,3 @@
       (if (positive? t)
         (resample-relative (- t t1) (signal-rest u))
         (make-signal (signal-first u) (resample-relative (+ t t2) u))))))
-
-; For use in contracts. Returns a function that checks the given predicate on a signal.
-(define (signal-of p?)
-  (λ (s)
-    (p? (signal-first s))))
-
-; For use in contracts. Predicates to check various types of signals.
-(define signal-of-number?  (signal-of number?))
-(define signal-of-integer? (signal-of integer?))
-(define signal-of-natural? (signal-of exact-nonnegative-integer?))
-(define signal-of-boolean? (signal-of boolean?))
-(define signal-of-list?    (signal-of list?))
-(define signal-of-vector?  (signal-of vector?))

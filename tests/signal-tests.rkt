@@ -5,6 +5,7 @@
 
 (require rackunit)
 (require "../src/signal.rkt")
+(require "../src/std.rkt")
 
 (provide signal-tests)
 
@@ -27,9 +28,9 @@
                     l)
       (check-pred static? (signal-drop s (sub1 (length l)))))
 
-    (test-case "Can alias a signal"
+    (test-case "Can create a proxy for a signal defined later"
       (define l (range 1 5))
-      (define a (signal-alias s))
+      (define a (signal-proxy s))
       (define s (list->signal l))
       (check-equal? (signal-take a (length l))
                     (signal-take s (length l)))
@@ -40,7 +41,7 @@
       (define s1 (list->signal l))
       (define s2 (register -1 s1))
       (check-eq? -1 (signal-first s2))
-      (check-eq? s1 (signal-rest s2)))
+      (check-equal? s1 (signal-rest s2)))
 
     (test-case "Can add1 to a signal"
       (define l (range 1 5))

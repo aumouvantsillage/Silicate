@@ -12,12 +12,14 @@
   (define out-ready (signal-proxy (producer-consumer-ready out)))
 
   (define timer-max (sub1 delay))
-  (define timer (register timer-max
-                  (if~ out-done
-                      (static 0)
-                      (if~ (<~ timer (static timer-max))
-                        (add1~ timer)
-                        timer))))
+  (define out-valid (moore timer-max
+                      (λ (timer done)
+                        (cond [done 0]
+                              [(< timer timer-max) (add1 timer)]
+                              [else timer]))
+                      (λ (timer)
+                        (= timer timer-max))
+                      out-done))
 
   (define out-valid (=~ timer (static timer-max)))
   (define out-done (and~ out-valid out-ready))
@@ -84,9 +86,9 @@
     (if b 1 0)))
 
 (define n 40)
-(printf "~a: ~a~n" "in-data  " (signal-take (producer-consumer-data producer-to-fifo)  n))
+(printf "~a: ~a~n" "in-data  " (signal-take (producer-consumer-data producer-to-fifo) n))
 (printf "~a: ~a~n" "in-valid " (b2i (signal-take (producer-consumer-valid producer-to-fifo) n)))
 (printf "~a: ~a~n" "in-ready " (b2i (signal-take (producer-consumer-ready producer-to-fifo) n)))
-(printf "~a: ~a~n" "out-data " (signal-take (producer-consumer-data fifo-to-consumer)  n))
+(printf "~a: ~a~n" "out-data " (signal-take (producer-consumer-data fifo-to-consumer) n))
 (printf "~a: ~a~n" "out-valid" (b2i (signal-take (producer-consumer-valid fifo-to-consumer) n)))
 (printf "~a: ~a~n" "out-ready" (b2i (signal-take (producer-consumer-ready fifo-to-consumer) n)))

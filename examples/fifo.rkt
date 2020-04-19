@@ -1,15 +1,13 @@
 #lang racket
 
 (require "../src/signal.rkt")
+(require "../src/component.rkt")
 (require "../src/std.rkt")
 
-(struct producer-consumer (data valid ready) #:mutable)
-
-(define (make-producer-consumer)
-  (producer-consumer #f #f #f))
+(interface producer-consumer (data valid ready))
 
 (define (producer delay out)
-  (define out-ready (signal-proxy (producer-consumer-ready out)))
+  (define out-ready (interface-ref out producer-consumer-ready))
 
   (define timer-max (sub1 delay))
   (define timer (register timer-max
@@ -23,13 +21,13 @@
   (define out-done (and~ out-valid out-ready))
   (define out-data (register/e 0 out-done (add1~ out-data)))
 
-  (set-producer-consumer-valid! out out-valid)
-  (set-producer-consumer-data!  out out-data))
+  (interface-set! out producer-consumer-valid out-valid)
+  (interface-set! out producer-consumer-data  out-data))
 
 (define (fifo len in out)
-  (define in-valid  (signal-proxy (producer-consumer-valid in)))
-  (define in-data   (signal-proxy (producer-consumer-data in)))
-  (define out-ready (signal-proxy (producer-consumer-ready out)))
+  (define in-valid  (interface-ref in  producer-consumer-valid))
+  (define in-data   (interface-ref in  producer-consumer-data))
+  (define out-ready (interface-ref out producer-consumer-ready))
 
   (define count (register/e 0 (xor~ in-done out-done)
                   (if~ in-done
@@ -56,13 +54,13 @@
   (define out-done (and~ out-valid out-ready))
   (define out-data (if~ is-empty in-data (vector-ref~ data read-index)))
 
-  (set-producer-consumer-ready! in  in-ready)
-  (set-producer-consumer-valid! out out-valid)
-  (set-producer-consumer-data!  out out-data))
+  (interface-set! in  producer-consumer-ready in-ready)
+  (interface-set! out producer-consumer-valid out-valid)
+  (interface-set! out producer-consumer-data  out-data))
 
 (define (consumer delay in)
-  (define in-valid (signal-proxy (producer-consumer-valid in)))
-  (define in-data  (signal-proxy (producer-consumer-data in)))
+  (define in-valid (interface-ref in producer-consumer-valid))
+  (define in-data  (interface-ref in producer-consumer-data))
 
   (define timer-max (static (sub1 delay)))
   (define timer (register/re 0 in-done (<~ timer timer-max) (add1~ timer)))
@@ -70,7 +68,7 @@
   (define in-ready (=~ timer timer-max))
   (define in-done  (and~ in-valid in-ready))
 
-  (set-producer-consumer-ready! in  in-ready))
+  (interface-set! in producer-consumer-ready in-ready))
 
 (define producer-to-fifo (make-producer-consumer))
 (define fifo-to-consumer (make-producer-consumer))
@@ -84,9 +82,9 @@
     (if b 1 0)))
 
 (define n 40)
-(printf "~a: ~a~n" "in-data  " (signal-take (producer-consumer-data producer-to-fifo)  n))
-(printf "~a: ~a~n" "in-valid " (b2i (signal-take (producer-consumer-valid producer-to-fifo) n)))
-(printf "~a: ~a~n" "in-ready " (b2i (signal-take (producer-consumer-ready producer-to-fifo) n)))
-(printf "~a: ~a~n" "out-data " (signal-take (producer-consumer-data fifo-to-consumer)  n))
-(printf "~a: ~a~n" "out-valid" (b2i (signal-take (producer-consumer-valid fifo-to-consumer) n)))
-(printf "~a: ~a~n" "out-ready" (b2i (signal-take (producer-consumer-ready fifo-to-consumer) n)))
+(printf "~a: ~a~n" "in-data  "      (signal-take (interface-ref producer-to-fifo producer-consumer-data)  n))
+(printf "~a: ~a~n" "in-valid " (b2i (signal-take (interface-ref producer-to-fifo producer-consumer-valid) n)))
+(printf "~a: ~a~n" "in-ready " (b2i (signal-take (interface-ref producer-to-fifo producer-consumer-ready) n)))
+(printf "~a: ~a~n" "out-data "      (signal-take (interface-ref fifo-to-consumer producer-consumer-data)  n))
+(printf "~a: ~a~n" "out-valid" (b2i (signal-take (interface-ref fifo-to-consumer producer-consumer-valid) n)))
+(printf "~a: ~a~n" "out-ready" (b2i (signal-take (interface-ref fifo-to-consumer producer-consumer-ready) n)))

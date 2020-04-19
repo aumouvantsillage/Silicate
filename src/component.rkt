@@ -9,6 +9,7 @@
     interface-set!)
 
 ; Create a plain interface object as a struct of boxes.
+; TODO hierarchical ports.
 (define-syntax (interface stx)
   (syntax-case stx ()
     [(_ name (field ...))

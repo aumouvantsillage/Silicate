@@ -11,15 +11,15 @@
 
   (define timer-max (sub1 delay))
   (define timer (register timer-max
-                  (if~ out-done
+                  (.if out-done
                       (static 0)
-                      (if~ (<~ timer (static timer-max))
-                        (add1~ timer)
+                      (.if (.< timer (static timer-max))
+                        (.add1 timer)
                         timer))))
 
-  (define out-valid (=~ timer (static timer-max)))
-  (define out-done (and~ out-valid out-ready))
-  (define out-data (register/e 0 out-done (add1~ out-data)))
+  (define out-valid (.= timer (static timer-max)))
+  (define out-done (.and out-valid out-ready))
+  (define out-data (register/e 0 out-done (.add1 out-data)))
 
   (interface-set! out producer-consumer-valid out-valid)
   (interface-set! out producer-consumer-data  out-data))
@@ -29,30 +29,30 @@
   (define in-data   (interface-ref in  producer-consumer-data))
   (define out-ready (interface-ref out producer-consumer-ready))
 
-  (define count (register/e 0 (xor~ in-done out-done)
-                  (if~ in-done
-                    (add1~ count)
-                    (sub1~ count))))
+  (define count (register/e 0 (.xor in-done out-done)
+                  (.if in-done
+                    (.add1 count)
+                    (.sub1 count))))
 
-  (define is-empty (zero?~ count))
-  (define is-full  (=~ count (static len)))
+  (define is-empty (.zero? count))
+  (define is-full  (.= count (static len)))
 
   (define index-max (static (sub1 len)))
   (define read-index (register/e 0 out-done
-                        (if~ (=~ read-index index-max)
+                        (if (.= read-index index-max)
                           (static 0)
-                          (add1~ read-index))))
-  (define write-index (remainder~ (+~ read-index count) (static len)))
+                          (.add1 read-index))))
+  (define write-index (.remainder (.+ read-index count) (static len)))
 
   (define data (register/e (make-vector len 0) in-done
-                 (vector-set~ data write-index in-data)))
+                 (.vector-set data write-index in-data)))
 
-  (define in-ready (or~ (not~ is-full) out-ready))
-  (define in-done  (and~ in-valid in-ready))
+  (define in-ready (.or (.not is-full) out-ready))
+  (define in-done  (.and in-valid in-ready))
 
-  (define out-valid (or~ (not~ is-empty) in-valid))
-  (define out-done (and~ out-valid out-ready))
-  (define out-data (if~ is-empty in-data (vector-ref~ data read-index)))
+  (define out-valid (.or (.not is-empty) in-valid))
+  (define out-done (.and out-valid out-ready))
+  (define out-data (.if is-empty in-data (.vector-ref data read-index)))
 
   (interface-set! in  producer-consumer-ready in-ready)
   (interface-set! out producer-consumer-valid out-valid)
@@ -63,10 +63,10 @@
   (define in-data  (interface-ref in producer-consumer-data))
 
   (define timer-max (static (sub1 delay)))
-  (define timer (register/re 0 in-done (<~ timer timer-max) (add1~ timer)))
+  (define timer (register/re 0 in-done (.< timer timer-max) (.add1 timer)))
 
-  (define in-ready (=~ timer timer-max))
-  (define in-done  (and~ in-valid in-ready))
+  (define in-ready (.= timer timer-max))
+  (define in-done  (.and in-valid in-ready))
 
   (interface-set! in producer-consumer-ready in-ready))
 

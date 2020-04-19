@@ -17,10 +17,10 @@
     [mealy        (-> any/c (-> any/c any/c (non-empty-listof any/c)) signal/c signal/c)]
     [moore        (-> any/c (-> any/c any/c any) (-> any/c any) signal/c signal/c)]
     [resample     (-> exact-nonnegative-integer? exact-nonnegative-integer? signal/c signal/c)]
-    [if~          (-> signal/c signal/c signal/c signal/c)])
+    [.if          (-> signal/c signal/c signal/c signal/c)])
   signal-proxy
-  λ~
-  define~
+  λ/lift
+  define/lift
   register
   register/r
   register/e
@@ -112,10 +112,10 @@
   g)
 
 ; Helpers to create lambda functions that work on signals.
-(define-syntax λ~
+(define-syntax λ/lift
   (syntax-rules ()
     ; Create a function with fixed arity.
-    [(λ~ (x ...) body ...)
+    [(λ/lift (x ...) body ...)
      (letrec ([f (λ (x ...) body ...)]
               [g (λ (x ...)
                    (make-signal
@@ -123,24 +123,24 @@
                      (g (signal-rest x) ...)))])
        g)]
     ; Create a function with variable arity.
-    [(λ~ x body ...)
+    [(λ/lift x body ...)
      (lift (λ x body ...))]))
 
 ; Helpers to define functions that work on signals.
-(define-syntax define~
+(define-syntax define/lift
   (syntax-rules ()
     ; Create a function with fixed arity.
-    [(define~ (name x ...) body ...)
-     (define name (λ~ (x ...) body ...))]
+    [(_ (name x ...) body ...)
+     (define name (λ/lift (x ...) body ...))]
     ; Create a function with variable arity.
-    [(define~ (name . x) body ...)
-     (define name (λ~ x body ...))]
+    [(_ (name . x) body ...)
+     (define name (λ/lift x body ...))]
     ; Convert a function f with unspecified arity.
-    [(define~ name f)
+    [(_ name f)
      (define name (lift f))]))
 
 ; A version of if that works on signals.
-(define~ (if~ c x y)
+(define/lift (.if c x y)
   (if c x y))
 
 ; Create a signal that delays d through a simple register.
@@ -149,15 +149,15 @@
 
 ; Register with synchronous reset.
 (define-syntax-rule (register/r q0 r d)
-  (register q0 (if~ r (static q0) d)))
+  (register q0 (.if r (static q0) d)))
 
 ; Register with enable.
 (define-syntax-rule (register/e q0 e d)
-  (feedback-last q0 (if~ e d)))
+  (feedback-last q0 (.if e d)))
 
 ; Register with synchronous reset and enable.
 (define-syntax-rule (register/re q0 r e d)
-  (feedback q0 (λ (q) (if~ r (static q0) (if~ e d q)))))
+  (feedback q0 (λ (q) (.if r (static q0) (.if e d q)))))
 
 ; Transform a plain function into a Medvedev machine.
 ; medvedev : ∀(s i) s (s i -> s) (Signal i) -> (Signal s)

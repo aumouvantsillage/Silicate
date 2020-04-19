@@ -1,8 +1,6 @@
 
 #lang racket
 
-; TODO test and~ or~ not~
-
 (require rackunit)
 (require "../src/signal.rkt")
 (require "../src/std.rkt")
@@ -45,13 +43,13 @@
 
     (test-case "Can add1 to a signal"
       (define l (range 1 5))
-      (define s (add1~ (list->signal l)))
+      (define s (.add1 (list->signal l)))
       (check-equal? (signal-take s (length l))
                     (map add1 l)))
 
     (test-case "Can sub1 to a signal"
       (define l (range 1 5))
-      (define s (sub1~ (list->signal l)))
+      (define s (.sub1 (list->signal l)))
       (check-equal? (signal-take s (length l))
                     (map sub1 l)))
 
@@ -59,18 +57,18 @@
       (define l1 (range 1   5   1))
       (define l2 (range 10  50  10))
       (define l3 (range 100 500 100))
-      (define s (+~ (list->signal l1) (list->signal l2) (list->signal l3)))
+      (define s (.+ (list->signal l1) (list->signal l2) (list->signal l3)))
       (check-equal? (signal-take s (length l1))
                     (map + l1 l2 l3)))
 
     (test-case "Can add an empty list of signals"
       (define n 10)
-      (check-equal? (signal-take (+~) n)
+      (check-equal? (signal-take (.+) n)
                     (build-list n (const 0))))
 
     (test-case "Can negate a signal"
       (define l (range 1 5))
-      (define s (-~ (list->signal l)))
+      (define s (.- (list->signal l)))
       (check-equal? (signal-take s (length l))
                     (map - l)))
 
@@ -78,7 +76,7 @@
       (define l1 (range 100 500 100))
       (define l2 (range 10  50  10))
       (define l3 (range 1   5   1))
-      (define s (-~ (list->signal l1) (list->signal l2) (list->signal l3)))
+      (define s (.- (list->signal l1) (list->signal l2) (list->signal l3)))
       (check-equal? (signal-take s (length l1))
                     (map - l1 l2 l3)))
 
@@ -86,20 +84,20 @@
       (define l1 (range 1   5   1))
       (define l2 (range 10  50  10))
       (define l3 (range 100 500 100))
-      (define s (*~ (list->signal l1) (list->signal l2) (list->signal l3)))
+      (define s (.* (list->signal l1) (list->signal l2) (list->signal l3)))
       (check-equal? (signal-take s (length l1))
                     (map * l1 l2 l3)))
 
     (test-case "Can multiply an empty list of signals"
       (define n 10)
-      (check-equal? (signal-take (*~) n)
+      (check-equal? (signal-take (.*) n)
                     (build-list n (const 1))))
 
     (test-case "Can use if on signals"
       (define l1 (list #f #f #t #t))
       (define l2 (range 10 50 10))
       (define l3 (range 1  5  1))
-      (define s (if~ (list->signal l1) (list->signal l2) (list->signal l3)))
+      (define s (.if (list->signal l1) (list->signal l2) (list->signal l3)))
       (check-equal? (signal-take s (length l1))
                     (map (λ (c x y) (if c x y)) l1 l2 l3)))
 
@@ -113,14 +111,14 @@
 
     (test-case "Can create a simple counter using register"
       (define n 10)
-      (define s (register 0 (add1~ s)))
+      (define s (register 0 (.add1 s)))
       (check-equal? (signal-take s n)
                     (range n)))
 
     (test-case "Can create a modulo counter using register/r"
       (define n1 4)
       (define n2 (* 3 n1))
-      (define s (register/r 0 (=~ s (static (sub1 n1))) (add1~ s)))
+      (define s (register/r 0 (.= s (static (sub1 n1))) (.add1 s)))
       (check-equal? (signal-take s n2)
                     (build-list n2 (λ (x) (remainder x n1)))))
 
@@ -128,10 +126,10 @@
       (define n1 4)
       (define n2 3)
       (define n3 (* 5 n1 n2))
-      (define s1 (register/r 0 tick1 (add1~ s1)))
-      (define tick1 (=~ s1 (static (sub1 n1))))
-      (define s2 (register/re 0 tick2 tick1 (add1~ s2)))
-      (define tick2 (and~ tick1 (=~ s2 (static (sub1 n2)))))
+      (define s1 (register/r 0 tick1 (.add1 s1)))
+      (define tick1 (.= s1 (static (sub1 n1))))
+      (define s2 (register/re 0 tick2 tick1 (.add1 s2)))
+      (define tick2 (.and tick1 (.= s2 (static (sub1 n2)))))
       (check-equal? (signal-take s2 n3)
                     (build-list n3 (λ (x) (remainder (quotient x n1) n2)))))
 

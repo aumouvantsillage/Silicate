@@ -295,5 +295,5 @@ descriptions following the Medvedev, Moore and Mealy models:
            (.= counter-mod-4 (static 3))))
 
 (signal-take counter-mealy 13)
-# '(-1 -1 -1 0 -1 -1 -1 1 -1 -1 -1 2 -1)
+; '(-1 -1 -1 0 -1 -1 -1 1 -1 -1 -1 2 -1)
 ```

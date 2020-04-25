@@ -156,7 +156,7 @@ fixed arity, or even a syntactic form like `if`:
      (lift (λ x body ...))]))
 ```
 
-Below, we provide versions of `+`, `add1` and `if` for signals:
+Below, we define versions of `+`, `add1` and `if` for signals:
 
 ```racket
 (define .+    (lift +))
@@ -223,12 +223,14 @@ And these macros define various kinds of registers, with or without
 Now we can define counters like this:
 
 ```racket
+; A simple counter with no upper limit.
 (define counter
   (register 0 (.add1 counter)))
 
 (signal-take counter 5)
 ; '(0 1 2 3 4)
 
+; A counter mod 4.
 (define .= (lift =))
 (define counter-mod-4
   (register/r 0 (.= counter-mod-4 (static 3))
@@ -237,10 +239,61 @@ Now we can define counters like this:
 (signal-take counter-mod-4 10)
 ; '(0 1 2 3 0 1 2 3 0 1)
 
-(define counter-cascaded
+; A counter that uses counter-mod-4 as a frequency divider.
+(define counter-div-4
   (register/e 0 (.= counter-mod-4 (static 3))
-                (.add1 counter-cascaded)))
+                (.add1 counter-div-4)))
 
-(signal-take counter-cascaded 13)
+(signal-take counter-div-4 13)
 ; '(0 0 0 0 1 1 1 1 2 2 2 2 3)
+```
+
+Finally, like in Cλash, we can promote plain functions into circuit
+descriptions following the Medvedev, Moore and Mealy models:
+
+```racket
+; f : state input -> state
+(define (medvedev s0 f x)
+  (feedback-first s0 ((lift f) x)))
+
+; f : state input -> state
+; g : state       -> output
+(define (moore s0 f g x)
+  ((lift g) (medvedev s0 f x)))
+
+; f : state input -> (state output)
+(define (mealy s0 f x)
+  (letrec ([s  (register s0 ((lift first) so))]
+           [so ((lift f) s  x)])
+    ((lift second) so)))
+
+; Same as counter-div-4, as a Medvedev machine.
+(define counter-div-4-mdv
+  (medvedev 0 (λ (c e)
+                (if e (add1 c) c))
+              (.= counter-mod-4 (static 3))))
+
+(signal-take counter-div-4-mdv 13)
+; '(0 0 0 0 1 1 1 1 2 2 2 2 3)
+
+; Same as counter-div-4, with its output multiplied by 10.
+(define counter-moore
+  (moore 0 (λ (c e)
+             (if e (add1 c) c))
+           (λ (c)
+             (* 10 c))
+           (.= counter-mod-4 (static 3))))
+
+(signal-take counter-moore 13)
+; '(0 0 0 0 10 10 10 10 20 20 20 20 30)
+
+; Same as counter-div-4, but each value is available in one cycle only.
+(define counter-mealy
+  (mealy 0 (λ (c e)
+             (if e (list (add1 c) c)
+                   (list c       -1)))
+           (.= counter-mod-4 (static 3))))
+
+(signal-take counter-mealy 13)
+# '(-1 -1 -1 0 -1 -1 -1 1 -1 -1 -1 2 -1)
 ```

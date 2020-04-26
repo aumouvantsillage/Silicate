@@ -84,8 +84,14 @@ portname
 Example:
 
 ```racket
-(define-interface intfa (in p integer) (out q integer))
-(define-interface intfb (in r integer) (use a intfa 3) (out s integer))
+(define-interface intfa
+    (in p integer)
+    (out q integer))
+
+(define-interface intfb
+    (in r integer)
+    (use a intfa 3)
+    (out s integer))
 
 (define-component (c (in t integer) (use b intfb) (out u integer))
     (define local-t (signal-proxy (unbox t)))
@@ -108,4 +114,13 @@ that can be used like this:
 (interface-set! u expr-for-u)
 (interface-set! b intfb-s expr-for-s)
 (interface-set! b intfb-a 2 intfa-q expr-for-q)
+```
+
+If we need to accesss a vector port (such as port `a` of `intfb`)
+with a signal as the index (e.g. `local-r`),
+we can use a variant of `interface-ref`:
+
+```racket
+(define local-r (interface-ref b intfb-r))
+(define local-p (interface-ref (local-r) b intfb-a local-r intfa-p))
 ```

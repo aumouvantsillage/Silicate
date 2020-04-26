@@ -68,8 +68,12 @@
        (interface-ref* vba c ...))]))
 
 ; Get a proxy to a signal from an interface of the current component.
-(define-syntax-rule (interface-ref x ...)
-  (signal-proxy (unbox (interface-ref* x ...))))
+(define-syntax interface-ref
+  (syntax-rules ()
+    [(interface-ref (s ...) x ...)
+     ((lift (λ (s ...) (signal-first (interface-ref x ...)))) s ...)]
+    [(interface-ref x ...)
+     (signal-proxy (unbox (interface-ref* x ...)))]))
 
 ; Assign a signal to a field in the interface of the current component.
 ; Transforms: (interface-set! a b c d y)

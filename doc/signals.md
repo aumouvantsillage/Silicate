@@ -53,8 +53,8 @@ This can be confusing at first for people who are not familiar with Haskell.
 Signals in Silicate
 -------------------
 
-Racket does not have lazy evaluation natively, but we can achieve similar
-features with lambda functions and macros.
+Silicate is based on Racket and does not have lazy evaluation natively,
+but we can achieve similar features with lambda functions and macros.
 
 In Silicate, a signal will be represented by a function that returns a pair
 `(val . sig)` where `val` is a sample value and `sig` is another *signal*

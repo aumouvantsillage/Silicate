@@ -9,6 +9,8 @@
 ;   from/to lists and strings.
 ; * At some point, we may support don't care or undefined values.
 
+; TODO change (for ([i (in-range len)])) to (for ([i len]))
+
 (provide
     (contract-out
       [logic-vector?         (-> any/c boolean?)]

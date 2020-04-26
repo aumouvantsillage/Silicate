@@ -4,9 +4,10 @@
 (require "../src/component.rkt")
 (require "../src/std.rkt")
 
-(interface producer ([out data  T]
-                     [out valid boolean]
-                     [in  ready boolean]))
+(define-interface producer
+  (out data  T)
+  (out valid boolean)
+  (in  ready boolean))
 
 (define (source delay out)
   (define out-ready (interface-ref out producer-ready))

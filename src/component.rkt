@@ -11,9 +11,10 @@
 (define-for-syntax (format-ctor-id intf-id)
   (format-id intf-id "make-~a" intf-id))
 
-(define-syntax-rule (interface-to-struct intf-id field ...)
-  (struct intf-id
-      #,(for/list ([f (syntax->list #'(field ...))])
+(define-for-syntax (interface-to-struct intf-id fields)
+  (writeln intf-id)
+  #`(struct #,intf-id
+      #,(for/list ([f fields])
           (syntax-case f ()
             ; Keep only the name of each field.
             [(_ field-id _) #'field-id]))))

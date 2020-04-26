@@ -12,33 +12,39 @@
   (format-id intf-id "make-~a" intf-id))
 
 (define-for-syntax (interface-to-struct intf-id fields)
-  (writeln intf-id)
   #`(struct #,intf-id
       #,(for/list ([f fields])
           (syntax-case f ()
             ; Keep only the name of each field.
-            [(_ field-id _) #'field-id]))))
+            [(_ field-id _ ...) #'field-id]))))
 
 (define-for-syntax (interface-to-constructor intf-id fields)
   (with-syntax ([intf-ctor-id (format-ctor-id intf-id)])
     #`(define (intf-ctor-id)
         ; Call the default constructor and initialize each field.
         (#,intf-id #,@(for/list ([f fields])
-                        ; Call a constructor for each field.
-                        (syntax-case f ()
+                        (syntax-case f (in out inout use opposite)
                           ; If the field is a plain input or output,
                           ; create an empty box.
-                          [(in  field-id _) #'(box #f)]
-                          [(out field-id _) #'(box #f)]
+                          [(in     _ ...) #'(box #f)]
+                          [(inout  _ ...) #'(box #f)]
+                          [(out    _ ...) #'(box #f)]
                           ; If the field uses an interface,
                           ; call the constructor for the target interface.
                           [(_ field-id field-intf-id)
                            (with-syntax ([field-intf-ctor-id (format-ctor-id #'field-intf-id)])
-                             #'(field-intf-ctor-id))]))))))
+                             #'(field-intf-ctor-id))]
+                          ; If the field uses an interface and has a multiplicity,
+                          ; create a vector with the result of the constructor for the target interface.
+                          [(_ field-id field-intf-id expr)
+                           (with-syntax ([field-intf-ctor-id (format-ctor-id #'field-intf-id)])
+                             #'(if (> expr 1)
+                                 (build-vector expr (λ (i) (field-intf-ctor-id)))
+                                 (field-intf-ctor-id)))]))))))
 
 ; Syntax of interfaces:
 ;
-; intf ::= (interface intf-id (mode field-id type expr?) ...)
+; intf ::= (define-interface intf-id (mode field-id type expr?) ...)
 ; mode ::= in | out | use | opposite
 ; type ::= intf-id | data-type-spec
 ;
@@ -51,25 +57,22 @@
            #,(interface-to-struct      #'id fields)
            #,(interface-to-constructor #'id fields)))]))
 
-; Get a proxy to a signal from an interface of the current component.
-; Transforms: (interface-ref a b c d)
-; Into:       (signal-proxy (unbox (d (c (b a)))))
-(define-syntax interface-ref
+; Get the box that contains a signal from an interface of the current component.
+(define-syntax interface-ref*
   (syntax-rules ()
-    [(interface-ref x)
-     (signal-proxy (unbox x))]
-    [(interface-ref a b c ...)
-     (let* ([a* a]
-            [b* b]
-            [ba (if (vector? a*) (vector-ref a* b*) (b* a*))])
-       (interface-ref ba c ...))]))
+    [(interface-ref* x) x]
+    [(interface-ref* a b c ...)
+     (let* ([va a]
+            [vb b]
+            [vba (if (vector? va) (vector-ref va vb) (vb va))])
+       (interface-ref* vba c ...))]))
+
+; Get a proxy to a signal from an interface of the current component.
+(define-syntax-rule (interface-ref x ...)
+  (signal-proxy (unbox (interface-ref* x ...))))
 
 ; Assign a signal to a field in the interface of the current component.
 ; Transforms: (interface-set! a b c d y)
 ; Into:       (set-box! (d (c (b a)))) y)
-(define-syntax interface-set!
-  (syntax-rules ()
-    [(interface-set! x y)
-     (set-box! x y)]
-    [(interface-set! a b c ... y)
-     (interface-set! (b a) c ... y)]))
+(define-syntax-rule (interface-set! x ... y)
+  (set-box! (interface-ref* x ...) y))

@@ -10,7 +10,7 @@ implementation (the *architecture*) but it is not mandatory.
 Two key features of Silicate are:
 
 * The ability to define nested interfaces, and to reuse an interface inside another.
-* The automatic availability of the *opposite* of an interface.
+* The automatic availability of a *flipped* version of an interface.
 
 Components and interfaces
 -------------------------
@@ -18,9 +18,9 @@ Components and interfaces
 Components and interfaces will be defined as:
 
 ```racket
-(define-component (id port-or-parameter ...) body ...)
+(define-component id (parameter ...) (port ...) body ...)
 
-(define-interface id port-or-parameter ...)
+(define-interface id (parameter ...) (port ...))
 ```
 
 Ports and parameters
@@ -36,7 +36,7 @@ Like in VHDL and Verilog, a simple port is defined by:
 
 A composite port is defined by:
 
-* its mode (`use`, `opposite`),
+* its mode (`use`, `flip`),
 * its name,
 * the target interface name,
 * its multiplicity (an expression with positive value).
@@ -84,16 +84,16 @@ portname
 Example:
 
 ```racket
-(define-interface intfa
-    (in p integer)
-    (out q integer))
+(define-interface intfa ()
+    ([in  p integer]
+     [out q integer]))
 
-(define-interface intfb
-    (in r integer)
-    (use a intfa 3)
-    (out s integer))
+(define-interface intfb ()
+    ([in  r integer]
+     [use a intfa 3]
+     [out s integer]))
 
-(define-component (c (in t integer) (use b intfb) (out u integer))
+(define-component c () ([in t integer] [use b intfb] [out u integer])
     (define local-t (signal-proxy (unbox t)))
     (define local-r (signal-proxy (unbox (intfb-r b))))
     (define local-p (signal-proxy (unbox (intfa-p (vector-ref (intfb-a b) 2)))))

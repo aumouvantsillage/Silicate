@@ -18,12 +18,14 @@
             ; Keep only the name of each field.
             [(_ field-id _ ...) #'field-id]))))
 
-(define-for-syntax (interface-to-constructor intf-id fields)
+(define-for-syntax (interface-to-constructor intf-id params fields)
   (with-syntax ([intf-ctor-id (format-ctor-id intf-id)])
-    #`(define (intf-ctor-id)
+    #`(define (intf-ctor-id #,@(for/list ([p params])
+                                 (syntax-case p ()
+                                   [(param-id _ ...) #'param-id])))
         ; Call the default constructor and initialize each field.
         (#,intf-id #,@(for/list ([f fields])
-                        (syntax-case f (in out inout use opposite)
+                        (syntax-case f (in out inout use flip)
                           ; If the field is a plain input or output,
                           ; create an empty box.
                           [(in     _ ...) #'(box #f)]
@@ -45,17 +47,18 @@
 ; Syntax of interfaces:
 ;
 ; intf ::= (define-interface intf-id (mode field-id type expr?) ...)
-; mode ::= in | out | use | opposite
+; mode ::= in | out | use | flip
 ; type ::= intf-id | data-type-spec
 ;
 ; TODO mode and data-type-spec are ignored
 (define-syntax (define-interface stx)
   (syntax-case stx ()
-    [(_ id field ...)
-     (let ([fields (syntax->list #'(field ...))])
+    [(_ id (param ...) (field ...))
+     (let ([fields (syntax->list #'(field ...))]
+           [params (syntax->list #'(param ...))])
        #`(begin
            #,(interface-to-struct      #'id fields)
-           #,(interface-to-constructor #'id fields)))]))
+           #,(interface-to-constructor #'id params fields)))]))
 
 ; Get the box that contains a signal from an interface of the current component.
 (define-syntax interface-ref*

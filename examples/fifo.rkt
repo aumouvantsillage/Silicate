@@ -4,10 +4,10 @@
 (require "../src/component.rkt")
 (require "../src/std.rkt")
 
-(define-interface producer
-  (out data  T)
-  (out valid boolean)
-  (in  ready boolean))
+(define-interface producer ([T type])
+  ([out data  T]
+   [out valid boolean]
+   [in  ready boolean]))
 
 (define (source delay out)
   (define out-ready (interface-ref out producer-ready))
@@ -73,8 +73,8 @@
 
   (interface-set! in producer-ready in-ready))
 
-(define fifo-in (make-producer))
-(define fifo-out (make-producer))
+(define fifo-in (make-producer 'integer))
+(define fifo-out (make-producer 'integer))
 
 (source 6 fifo-in)
 (fifo   4 fifo-in fifo-out)

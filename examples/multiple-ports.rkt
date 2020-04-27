@@ -6,11 +6,11 @@
 
 ; Access to a vector port where the index is a number
 
-(define-interface io ()
+(define-interface io ([T type])
   ([out x integer]))
 
-(define-interface mio ([N positive])
-  ([use y io N]))
+(define-interface mio ([T type] [N positive])
+  ([use y (io T) N]))
 
 (define (source N out)
   (for ([k N])
@@ -21,8 +21,8 @@
     (interface-set! out mio-y k io-x (register 0 (interface-ref in mio-y k io-x)))))
 
 (define N 3)
-(define src-out (make-mio N))
-(define regs-out (make-mio N))
+(define src-out (make-mio 'intreger N))
+(define regs-out (make-mio 'integer N))
 
 (source N src-out)
 (regs   N src-out regs-out)

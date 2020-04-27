@@ -8,41 +8,49 @@
     interface-ref
     interface-set!)
 
-(define-for-syntax (format-ctor-id intf-id)
-  (format-id intf-id "make-~a" intf-id))
+(define-for-syntax (format-ctor-id id)
+  (format-id id "make-~a" id))
 
-(define-for-syntax (interface-to-struct intf-id fields)
-  #`(struct #,intf-id
+(define-for-syntax (interface-to-struct id fields)
+  #`(struct #,id
       #,(for/list ([f fields])
           (syntax-case f ()
             ; Keep only the name of each field.
-            [(_ field-id _ ...) #'field-id]))))
+            [(_ fid _ ...) #'fid]))))
 
-(define-for-syntax (interface-to-constructor intf-id params fields)
-  (with-syntax ([intf-ctor-id (format-ctor-id intf-id)])
-    #`(define (intf-ctor-id #,@(for/list ([p params])
-                                 (syntax-case p ()
-                                   [(param-id _ ...) #'param-id])))
+(define-for-syntax (interface-constructor-call stx)
+  (syntax-case stx ()
+    ; General case: the field uses an interface with arguments
+    ; and has an explicit multiplicity.
+    [(_ id (iid arg ...) expr)
+     (with-syntax ([mk (format-ctor-id #'iid)])
+       #'(if (> expr 1)
+           (build-vector expr (λ (i) (mk arg ...)))
+           (mk arg ...)))]
+    ; Special case: arguments and no explicit multiplicity.
+    [(mode id (iid arg ...))
+     (interface-constructor-call #'(mode id (iid arg ...) 1))]
+    ; Special case: no argument and explicit multiplicity.
+    [(mode id iid expr)
+     (interface-constructor-call #'(mode id (iid) expr))]
+    ; Special case: no argument and no explicit multiplicity.
+    [(mode id iid)
+     (interface-constructor-call #'(mode id (iid) 1))]))
+
+(define-for-syntax (interface-to-constructor id params fields)
+  (with-syntax ([mk (format-ctor-id id)])
+    #`(define (mk #,@(for/list ([p params])
+                       (syntax-case p ()
+                         [(pid _ ...) #'pid])))
         ; Call the default constructor and initialize each field.
-        (#,intf-id #,@(for/list ([f fields])
-                        (syntax-case f (in out inout use flip)
+        (#,id #,@(for/list ([f fields])
+                        (syntax-case f (in out inout)
                           ; If the field is a plain input or output,
                           ; create an empty box.
                           [(in     _ ...) #'(box #f)]
                           [(inout  _ ...) #'(box #f)]
                           [(out    _ ...) #'(box #f)]
-                          ; If the field uses an interface,
-                          ; call the constructor for the target interface.
-                          [(_ field-id field-intf-id)
-                           (with-syntax ([field-intf-ctor-id (format-ctor-id #'field-intf-id)])
-                             #'(field-intf-ctor-id))]
-                          ; If the field uses an interface and has a multiplicity,
-                          ; create a vector with the result of the constructor for the target interface.
-                          [(_ field-id field-intf-id expr)
-                           (with-syntax ([field-intf-ctor-id (format-ctor-id #'field-intf-id)])
-                             #'(if (> expr 1)
-                                 (build-vector expr (λ (i) (field-intf-ctor-id)))
-                                 (field-intf-ctor-id)))]))))))
+                          [_              (interface-constructor-call f)]))))))
 
 ; Syntax of interfaces:
 ;

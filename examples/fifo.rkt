@@ -9,31 +9,31 @@
    [out valid boolean]
    [in  ready boolean]))
 
-(define (source delay out)
-  (define out-ready (interface-ref out producer-ready))
+(define-component source ([delay positive]) ([use p (producer 'natural)])
+  (define p-ready (interface-ref p producer-ready))
 
   (define timer-max (sub1 delay))
   (define timer (register timer-max
-                  (.if out-done
+                  (.if p-done
                       (static 0)
                       (.if (.< timer (static timer-max))
                         (.add1 timer)
                         timer))))
 
-  (define out-valid (.= timer (static timer-max)))
-  (define out-done (.and out-valid out-ready))
-  (define out-data (register/e 0 out-done (.add1 out-data)))
+  (define p-valid (.= timer (static timer-max)))
+  (define p-done (.and p-valid p-ready))
+  (define p-data (register/e 0 p-done (.add1 p-data)))
 
-  (interface-set! out producer-valid out-valid)
-  (interface-set! out producer-data  out-data))
+  (interface-set! p producer-valid p-valid)
+  (interface-set! p producer-data  p-data))
 
-(define (fifo len in out)
-  (define in-valid  (interface-ref in  producer-valid))
-  (define in-data   (interface-ref in  producer-data))
-  (define out-ready (interface-ref out producer-ready))
+(define-component fifo ([len positive]) ([flip c (producer 'natural)] [use p (producer 'natural)])
+  (define c-valid (interface-ref c producer-valid))
+  (define c-data  (interface-ref c producer-data))
+  (define p-ready (interface-ref p producer-ready))
 
-  (define count (register/e 0 (.xor in-done out-done)
-                  (.if in-done
+  (define count (register/e 0 (.xor c-done p-done)
+                  (.if c-done
                     (.add1 count)
                     (.sub1 count))))
 
@@ -41,53 +41,53 @@
   (define is-full  (.= count (static len)))
 
   (define index-max (static (sub1 len)))
-  (define read-index (register/e 0 out-done
+  (define read-index (register/e 0 p-done
                         (if (.= read-index index-max)
                           (static 0)
                           (.add1 read-index))))
   (define write-index (.remainder (.+ read-index count) (static len)))
 
-  (define data (register/e (make-vector len 0) in-done
-                 (.vector-set data write-index in-data)))
+  (define data (register/e (make-vector len 0) c-done
+                 (.vector-set data write-index c-data)))
 
-  (define in-ready (.or (.not is-full) out-ready))
-  (define in-done  (.and in-valid in-ready))
+  (define c-ready (.or (.not is-full) p-ready))
+  (define c-done  (.and c-valid c-ready))
 
-  (define out-valid (.or (.not is-empty) in-valid))
-  (define out-done (.and out-valid out-ready))
-  (define out-data (.if is-empty in-data (.vector-ref data read-index)))
+  (define p-valid (.or (.not is-empty) c-valid))
+  (define p-done (.and p-valid p-ready))
+  (define p-data (.if is-empty c-data (.vector-ref data read-index)))
 
-  (interface-set! in  producer-ready in-ready)
-  (interface-set! out producer-valid out-valid)
-  (interface-set! out producer-data  out-data))
+  (interface-set! c producer-ready c-ready)
+  (interface-set! p producer-valid p-valid)
+  (interface-set! p producer-data  p-data))
 
-(define (sink delay in)
-  (define in-valid (interface-ref in producer-valid))
-  (define in-data  (interface-ref in producer-data))
+(define-component sink ([delay positive]) ([flip c (producer 'natural)])
+  (define c-valid (interface-ref c producer-valid))
+  (define c-data  (interface-ref c producer-data))
 
   (define timer-max (static (sub1 delay)))
-  (define timer (register/re 0 in-done (.< timer timer-max) (.add1 timer)))
+  (define timer (register/re 0 c-done (.< timer timer-max) (.add1 timer)))
 
-  (define in-ready (.= timer timer-max))
-  (define in-done  (.and in-valid in-ready))
+  (define c-ready (.= timer timer-max))
+  (define c-done  (.and c-valid c-ready))
 
-  (interface-set! in producer-ready in-ready))
+  (interface-set! c producer-ready c-ready))
 
-(define fifo-in (make-producer 'integer))
-(define fifo-out (make-producer 'integer))
+(define fifo-c (make-producer 'integer))
+(define fifo-p (make-producer 'integer))
 
-(source 6 fifo-in)
-(fifo   4 fifo-in fifo-out)
-(sink   3 fifo-out)
+(source 6 fifo-c)
+(fifo   4 fifo-c fifo-p)
+(sink   3 fifo-p)
 
 (define (b2i lst)
   (for/list ([b (in-list lst)])
     (if b 1 0)))
 
 (define n 40)
-(printf "~a: ~a~n" "in-data  "      (signal-take (interface-ref fifo-in  producer-data)  n))
-(printf "~a: ~a~n" "in-valid " (b2i (signal-take (interface-ref fifo-in  producer-valid) n)))
-(printf "~a: ~a~n" "in-ready " (b2i (signal-take (interface-ref fifo-in  producer-ready) n)))
-(printf "~a: ~a~n" "out-data "      (signal-take (interface-ref fifo-out producer-data)  n))
-(printf "~a: ~a~n" "out-valid" (b2i (signal-take (interface-ref fifo-out producer-valid) n)))
-(printf "~a: ~a~n" "out-ready" (b2i (signal-take (interface-ref fifo-out producer-ready) n)))
+(printf "~a: ~a~n" "c-data  "      (signal-take (interface-ref fifo-c producer-data)  n))
+(printf "~a: ~a~n" "c-valid " (b2i (signal-take (interface-ref fifo-c producer-valid) n)))
+(printf "~a: ~a~n" "c-ready " (b2i (signal-take (interface-ref fifo-c producer-ready) n)))
+(printf "~a: ~a~n" "p-data  "      (signal-take (interface-ref fifo-p producer-data)  n))
+(printf "~a: ~a~n" "p-valid " (b2i (signal-take (interface-ref fifo-p producer-valid) n)))
+(printf "~a: ~a~n" "p-ready " (b2i (signal-take (interface-ref fifo-p producer-ready) n)))

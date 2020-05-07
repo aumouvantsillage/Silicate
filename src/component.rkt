@@ -4,10 +4,10 @@
 (require "signal.rkt")
 
 (provide
-    define-interface
-    define-component
-    interface-ref
-    interface-set!)
+    interface
+    component
+    port-ref
+    port-set!)
 
 (begin-for-syntax
 
@@ -55,13 +55,12 @@
       #`(define (mk #,@(parameter-names params))
           ; Call the default constructor and initialize each port.
           (#,id #,@(for/list ([p ports])
-                          (syntax-case p (in out inout)
+                          (syntax-case p (in out)
                             ; If the port is a plain input or output,
                             ; create an empty box.
-                            [(in     _ ...) #'(box #f)]
-                            [(inout  _ ...) #'(box #f)]
-                            [(out    _ ...) #'(box #f)]
-                            [_              (interface-constructor-call p)])))))))
+                            [(in  _ ...) #'(box #f)]
+                            [(out _ ...) #'(box #f)]
+                            [_           (interface-constructor-call p)])))))))
 
 ; Syntax of interfaces:
 ;
@@ -70,7 +69,7 @@
 ; type ::= intf-id | data-type-spec
 ;
 ; TODO mode and data-type-spec are ignored
-(define-syntax (define-interface stx)
+(define-syntax (interface stx)
   (syntax-case stx ()
     [(_ id (param ...) (port ...))
      (let ([ports  (syntax->list #'(port ...))]
@@ -79,7 +78,7 @@
            #,(interface-to-struct      #'id ports)
            #,(interface-to-constructor #'id params ports)))]))
 
-(define-syntax (define-component stx)
+(define-syntax (component stx)
   (syntax-case stx ()
     [(_ id (param ...) (port ...) body ...)
      (let ([ports  (syntax->list #'(port ...))]
@@ -87,25 +86,25 @@
        #`(define (id #,@(parameter-names params) #,@(port-names ports)) body ...))]))
 
 ; Get the box that contains a signal from an interface of the current component.
-(define-syntax interface-ref*
+(define-syntax port-ref*
   (syntax-rules ()
-    [(interface-ref* x) x]
-    [(interface-ref* a b c ...)
+    [(port-ref* x) x]
+    [(port-ref* a b c ...)
      (let* ([va a]
             [vb b]
             [vba (if (vector? va) (vector-ref va vb) (vb va))])
-       (interface-ref* vba c ...))]))
+       (port-ref* vba c ...))]))
 
 ; Get a proxy to a signal from an interface of the current component.
-(define-syntax interface-ref
+(define-syntax port-ref
   (syntax-rules ()
-    [(interface-ref (s ...) x ...)
-     ((lift (λ (s ...) (signal-first (interface-ref x ...)))) s ...)]
-    [(interface-ref x ...)
-     (signal-proxy (unbox (interface-ref* x ...)))]))
+    [(port-ref (s ...) x ...)
+     ((lift (λ (s ...) (signal-first (port-ref x ...)))) s ...)]
+    [(port-ref x ...)
+     (signal-proxy (unbox (port-ref* x ...)))]))
 
 ; Assign a signal to a port in the interface of the current component.
-; Transforms: (interface-set! a b c d y)
+; Transforms: (port-set! a b c d y)
 ; Into:       (set-box! (d (c (b a)))) y)
-(define-syntax-rule (interface-set! x ... y)
-  (set-box! (interface-ref* x ...) y))
+(define-syntax-rule (port-set! x ... y)
+  (set-box! (port-ref* x ...) y))

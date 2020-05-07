@@ -18,9 +18,9 @@ Components and interfaces
 Components and interfaces will be defined as:
 
 ```racket
-(define-component id (parameter ...) (port ...) body ...)
+(component id (parameter ...) (port ...) body ...)
 
-(define-interface id (parameter ...) (port ...))
+(interface id (parameter ...) (port ...))
 ```
 
 Ports and parameters
@@ -28,18 +28,21 @@ Ports and parameters
 
 Like in VHDL and Verilog, a simple port is defined by:
 
-* its mode (`in`, `out`, `inout`),
 * its name,
+* its mode (`in`, `out`),
 * its type,
-* optionally, an expression that sets a default input value for `in` or `inout` ports
+* optionally, an expression that sets a default input value for `in` ports
   that are not connected.
 
 A composite port is defined by:
 
-* its mode (`use`, `flip`),
 * its name,
-* the target interface name,
 * its multiplicity (an expression with positive value).
+* its mode (`use`, `flip`),
+* the target interface name,
+
+When the name and multiplicity of a composite port are omitted, the ports of
+its target interface are inlined into the current interface or component.
 
 A parameter is defined by:
 
@@ -84,16 +87,16 @@ portname
 Example:
 
 ```racket
-(define-interface intfa ()
-    ([in  p integer]
-     [out q integer]))
+(interface intfa ()
+    ([p in  integer]
+     [q out integer]))
 
-(define-interface intfb ()
-    ([in  r integer]
-     [use a intfa 3]
-     [out s integer]))
+(interface intfb ()
+    ([r in  integer]
+     [a use intfa 3]
+     [s out integer]))
 
-(define-component c () ([in t integer] [use b intfb] [out u integer])
+(define-component c () ([t in integer] [b use intfb] [u out integer])
     (define local-t (signal-proxy (unbox t)))
     (define local-r (signal-proxy (unbox (intfb-r b))))
     (define local-p (signal-proxy (unbox (intfa-p (vector-ref (intfb-a b) 2)))))
@@ -103,24 +106,24 @@ Example:
     (set-box! (intfa-q (vector-ref (intfb-a b) 2)) expr-for-q))
 ```
 
-For convenience, we define macros `interface-ref` and `interface-set!`
+For convenience, we define macros `port-ref` and `port-set!`
 that can be used like this:
 
 ```racket
-(define local-t (interface-ref t))
-(define local-r (interface-ref b intfb-r))
-(define local-p (interface-ref b intfb-a 2 intfa-p))
+(define local-t (port-ref t))
+(define local-r (port-ref b intfb-r))
+(define local-p (port-ref b intfb-a 2 intfa-p))
 ...
-(interface-set! u expr-for-u)
-(interface-set! b intfb-s expr-for-s)
-(interface-set! b intfb-a 2 intfa-q expr-for-q)
+(port-set! u expr-for-u)
+(port-set! b intfb-s expr-for-s)
+(port-set! b intfb-a 2 intfa-q expr-for-q)
 ```
 
 If we need to accesss a vector port (such as port `a` of `intfb`)
 with a signal as the index (e.g. `local-r`),
-we can use a variant of `interface-ref`:
+we can use a variant of `port-ref`:
 
 ```racket
-(define local-r (interface-ref b intfb-r))
-(define local-p (interface-ref (local-r) b intfb-a local-r intfa-p))
+(define local-r (port-ref b intfb-r))
+(define local-p (port-ref (local-r) b intfb-a local-r intfa-p))
 ```

@@ -4,13 +4,13 @@
 (require "../src/component.rkt")
 (require "../src/std.rkt")
 
-(define-interface producer ([T type])
+(interface producer ([T type])
   ([out data  T]
    [out valid boolean]
    [in  ready boolean]))
 
-(define-component source ([delay positive]) ([use p (producer 'natural)])
-  (define p-ready (interface-ref p producer-ready))
+(component source ([delay positive]) ([use p (producer 'natural)])
+  (define p-ready (port-ref p producer-ready))
 
   (define timer-max (sub1 delay))
   (define timer (register timer-max
@@ -24,13 +24,13 @@
   (define p-done (.and p-valid p-ready))
   (define p-data (register/e 0 p-done (.add1 p-data)))
 
-  (interface-set! p producer-valid p-valid)
-  (interface-set! p producer-data  p-data))
+  (port-set! p producer-valid p-valid)
+  (port-set! p producer-data  p-data))
 
-(define-component fifo ([len positive]) ([flip c (producer 'natural)] [use p (producer 'natural)])
-  (define c-valid (interface-ref c producer-valid))
-  (define c-data  (interface-ref c producer-data))
-  (define p-ready (interface-ref p producer-ready))
+(component fifo ([len positive]) ([flip c (producer 'natural)] [use p (producer 'natural)])
+  (define c-valid (port-ref c producer-valid))
+  (define c-data  (port-ref c producer-data))
+  (define p-ready (port-ref p producer-ready))
 
   (define count (register/e 0 (.xor c-done p-done)
                   (.if c-done
@@ -57,13 +57,13 @@
   (define p-done (.and p-valid p-ready))
   (define p-data (.if is-empty c-data (.vector-ref data read-index)))
 
-  (interface-set! c producer-ready c-ready)
-  (interface-set! p producer-valid p-valid)
-  (interface-set! p producer-data  p-data))
+  (port-set! c producer-ready c-ready)
+  (port-set! p producer-valid p-valid)
+  (port-set! p producer-data  p-data))
 
-(define-component sink ([delay positive]) ([flip c (producer 'natural)])
-  (define c-valid (interface-ref c producer-valid))
-  (define c-data  (interface-ref c producer-data))
+(component sink ([delay positive]) ([flip c (producer 'natural)])
+  (define c-valid (port-ref c producer-valid))
+  (define c-data  (port-ref c producer-data))
 
   (define timer-max (static (sub1 delay)))
   (define timer (register/re 0 c-done (.< timer timer-max) (.add1 timer)))
@@ -71,7 +71,7 @@
   (define c-ready (.= timer timer-max))
   (define c-done  (.and c-valid c-ready))
 
-  (interface-set! c producer-ready c-ready))
+  (port-set! c producer-ready c-ready))
 
 (define fifo-c (make-producer 'integer))
 (define fifo-p (make-producer 'integer))
@@ -85,9 +85,9 @@
     (if b 1 0)))
 
 (define n 40)
-(printf "~a: ~a~n" "c-data  "      (signal-take (interface-ref fifo-c producer-data)  n))
-(printf "~a: ~a~n" "c-valid " (b2i (signal-take (interface-ref fifo-c producer-valid) n)))
-(printf "~a: ~a~n" "c-ready " (b2i (signal-take (interface-ref fifo-c producer-ready) n)))
-(printf "~a: ~a~n" "p-data  "      (signal-take (interface-ref fifo-p producer-data)  n))
-(printf "~a: ~a~n" "p-valid " (b2i (signal-take (interface-ref fifo-p producer-valid) n)))
-(printf "~a: ~a~n" "p-ready " (b2i (signal-take (interface-ref fifo-p producer-ready) n)))
+(printf "~a: ~a~n" "c-data  "      (signal-take (port-ref fifo-c producer-data)  n))
+(printf "~a: ~a~n" "c-valid " (b2i (signal-take (port-ref fifo-c producer-valid) n)))
+(printf "~a: ~a~n" "c-ready " (b2i (signal-take (port-ref fifo-c producer-ready) n)))
+(printf "~a: ~a~n" "p-data  "      (signal-take (port-ref fifo-p producer-data)  n))
+(printf "~a: ~a~n" "p-valid " (b2i (signal-take (port-ref fifo-p producer-valid) n)))
+(printf "~a: ~a~n" "p-ready " (b2i (signal-take (port-ref fifo-p producer-ready) n)))

@@ -6,19 +6,19 @@
 
 ; Access to a vector port where the index is a number
 
-(define-interface io ([T type])
-  ([out x T]))
+(interface io ([T type])
+  ([x out T]))
 
-(define-interface mio ([T type] [N positive])
-  ([use y (io T) N]))
+(interface mio ([T type] [N positive])
+  ([y N use (io T)]))
 
-(define-component source ([N positive]) ([use o (mio 'integer N)])
+(component source ([N positive]) ([o use (mio 'integer N)])
   (for ([k N])
-    (interface-set! o mio-y k io-x (static (* 10 (add1 k))))))
+    (port-set! o mio-y k io-x (static (* 10 (add1 k))))))
 
-(define-component regs ([N positive]) ([flip i (mio 'integer N)] [use o (mio 'integer N)])
+(component regs ([N positive]) ([i flip (mio 'integer N)] [o use (mio 'integer N)])
   (for ([k N])
-    (interface-set! o mio-y k io-x (register 0 (interface-ref i mio-y k io-x)))))
+    (port-set! o mio-y k io-x (register 0 (port-ref i mio-y k io-x)))))
 
 (define N 3)
 
@@ -30,18 +30,18 @@
 
 (define L 10)
 (for ([k N])
-  (printf "~a[~a]: ~a~n" "src-out"  k (signal-take (interface-ref src-out  mio-y k io-x) L))
-  (printf "~a[~a]: ~a~n" "regs-out" k (signal-take (interface-ref regs-out mio-y k io-x) L)))
+  (printf "~a[~a]: ~a~n" "src-out"  k (signal-take (port-ref src-out  mio-y k io-x) L))
+  (printf "~a[~a]: ~a~n" "regs-out" k (signal-take (port-ref regs-out mio-y k io-x) L)))
 
 ; Access to a vector port where the index is a signal
 
 (define (mux in sel out)
-  (define local-sel (interface-ref sel))
-  (interface-set! out (interface-ref (local-sel) in mio-y local-sel io-x)))
+  (define local-sel (port-ref sel))
+  (port-set! out (port-ref (local-sel) in mio-y local-sel io-x)))
 
 (define mux-sel (register/r 0 (.= mux-sel (static 2)) (.add1 mux-sel)))
 (define mux-out (box #f))
 (mux src-out (box mux-sel) mux-out)
 
 (printf "~a: ~a~n" "mux-sel"  (signal-take mux-sel L))
-(printf "~a: ~a~n" "mux-out"  (signal-take (interface-ref mux-out) L))
+(printf "~a: ~a~n" "mux-out"  (signal-take (port-ref mux-out) L))

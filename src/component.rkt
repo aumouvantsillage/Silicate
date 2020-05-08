@@ -1,5 +1,6 @@
 #lang racket
 
+(require (for-syntax racket))
 (require (for-syntax racket/syntax))
 (require "signal.rkt")
 
@@ -11,79 +12,77 @@
 
 (begin-for-syntax
 
-  (define (format-ctor-id id)
-    (format-id id "make-~a" id))
-
-  (define (interface-to-struct id ports)
-    #`(struct #,id
-        #,(for/list ([p ports])
-            (syntax-case p ()
-              ; Keep only the name of each port.
-              [(_ pid _ ...) #'pid]))))
-
-  (define (interface-constructor-call stx)
-    (syntax-case stx ()
+  ; Normalize the syntax object that represents a port, adding
+  ; default multiplicity and arguments if they are missing.
+  (define (port-normalize port)
+    (syntax-case port ()
       ; General case: the port uses an interface with arguments
       ; and has an explicit multiplicity.
-      [(_ id (iid arg ...) expr)
-       (with-syntax ([mk (format-ctor-id #'iid)])
-         #'(if (> expr 1)
-             (build-vector expr (λ (i) (mk arg ...)))
-             (mk arg ...)))]
+      [(id expr mode (iid arg ...)) port]
       ; Special case: arguments and no explicit multiplicity.
-      [(mode id (iid arg ...))
-       (interface-constructor-call #'(mode id (iid arg ...) 1))]
+      [(id mode (iid arg ...)) #'(id 1 mode (iid arg ...))]
       ; Special case: no argument and explicit multiplicity.
-      [(mode id iid expr)
-       (interface-constructor-call #'(mode id (iid) expr))]
+      [(id expr mode iid) #'(id expr mode (iid))]
       ; Special case: no argument and no explicit multiplicity.
-      [(mode id iid)
-       (interface-constructor-call #'(mode id (iid) 1))]))
+      [(id mode iid) #'(id 1 mode (iid))]
+      ; Invalid case.
+      [_ (error "Invalid port definition" port)]))
 
-  (define (parameter-names params)
-    (for/list ([p params])
+  ; Returns the list of port or parameter names.
+  (define (interface-item-names items)
+    (for/list ([p items])
       (syntax-case p ()
         [(pid _ ...) #'pid])))
 
-  (define (port-names ports)
-    (for/list ([p ports])
-      (syntax-case p ()
-        [(_ pid _ ...) #'pid])))
+  ; Create a struct type for an interface with the given id and ports.
+  (define (interface-to-struct id ports)
+    #`(struct #,id #,(interface-item-names ports)))
 
+  ; Format the id of a constructor function for an interface.
+  (define (format-ctor-id id)
+    (format-id id "make-~a" id))
+
+  ; Call the constructor of the interface for a composite port.
+  ; The given port must be a syntax object from normalize-port.
+  (define (interface-constructor-call port)
+    (syntax-case port ()
+      [(id expr mode (iid arg ...))
+       (with-syntax ([mk (format-ctor-id #'iid)])
+         #'(if (> expr 1)
+             (build-vector expr (λ (i) (mk arg ...)))
+             (mk arg ...)))]))
+
+  ; Create a constructor for the interface with the given id,
+  ; parameters and ports.
   (define (interface-to-constructor id params ports)
     (with-syntax ([mk (format-ctor-id id)])
-      #`(define (mk #,@(parameter-names params))
+      #`(define (mk #,@(interface-item-names params))
           ; Call the default constructor and initialize each port.
           (#,id #,@(for/list ([p ports])
                           (syntax-case p (in out)
                             ; If the port is a plain input or output,
                             ; create an empty box.
-                            [(in  _ ...) #'(box #f)]
-                            [(out _ ...) #'(box #f)]
-                            [_           (interface-constructor-call p)])))))))
+                            [(_ _ in  _ ...) #'(box #f)]
+                            [(_ _ out _ ...) #'(box #f)]
+                            [_                 (interface-constructor-call p)])))))))
 
-; Syntax of interfaces:
-;
-; intf ::= (define-interface intf-id (mode port-id type expr?) ...)
-; mode ::= in | out | use | flip
-; type ::= intf-id | data-type-spec
-;
-; TODO mode and data-type-spec are ignored
+; Create a new interface.
 (define-syntax (interface stx)
   (syntax-case stx ()
     [(_ id (param ...) (port ...))
-     (let ([ports  (syntax->list #'(port ...))]
+     (let ([ports  (map port-normalize (syntax->list #'(port ...)))]
            [params (syntax->list #'(param ...))])
        #`(begin
            #,(interface-to-struct      #'id ports)
            #,(interface-to-constructor #'id params ports)))]))
 
+; Create a new component.
 (define-syntax (component stx)
   (syntax-case stx ()
     [(_ id (param ...) (port ...) body ...)
-     (let ([ports  (syntax->list #'(port ...))]
+     (let ([ports  (map port-normalize (syntax->list #'(port ...)))]
            [params (syntax->list #'(param ...))])
-       #`(define (id #,@(parameter-names params) #,@(port-names ports)) body ...))]))
+       #`(define (id #,@(interface-item-names params) #,@(interface-item-names ports)) body ...))]))
 
 ; Get the box that contains a signal from an interface of the current component.
 (define-syntax port-ref*
@@ -104,7 +103,5 @@
      (signal-proxy (unbox (port-ref* x ...)))]))
 
 ; Assign a signal to a port in the interface of the current component.
-; Transforms: (port-set! a b c d y)
-; Into:       (set-box! (d (c (b a)))) y)
 (define-syntax-rule (port-set! x ... y)
   (set-box! (port-ref* x ...) y))

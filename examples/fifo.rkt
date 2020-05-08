@@ -5,11 +5,11 @@
 (require "../src/std.rkt")
 
 (interface producer ([T type])
-  ([out data  T]
-   [out valid boolean]
-   [in  ready boolean]))
+  ([data  out T]
+   [valid out boolean]
+   [ready in  boolean]))
 
-(component source ([delay positive]) ([use p (producer 'natural)])
+(component source ([delay positive]) ([p use (producer 'natural)])
   (define p-ready (port-ref p producer-ready))
 
   (define timer-max (sub1 delay))
@@ -27,7 +27,7 @@
   (port-set! p producer-valid p-valid)
   (port-set! p producer-data  p-data))
 
-(component fifo ([len positive]) ([flip c (producer 'natural)] [use p (producer 'natural)])
+(component fifo ([len positive]) ([c flip (producer 'natural)] [p use (producer 'natural)])
   (define c-valid (port-ref c producer-valid))
   (define c-data  (port-ref c producer-data))
   (define p-ready (port-ref p producer-ready))
@@ -61,7 +61,7 @@
   (port-set! p producer-valid p-valid)
   (port-set! p producer-data  p-data))
 
-(component sink ([delay positive]) ([flip c (producer 'natural)])
+(component sink ([delay positive]) ([c flip (producer 'natural)])
   (define c-valid (port-ref c producer-valid))
   (define c-data  (port-ref c producer-data))
 

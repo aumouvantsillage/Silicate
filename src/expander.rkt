@@ -14,56 +14,72 @@
 (begin-for-syntax
   (define silicate-ns (module->namespace 'silicate/metamodel))
 
-  (define (syntax->model parent stx)
+  (define (syntax->model stx)
+    (or (syntax-property stx 'model)
+        (let ([lst (syntax->list stx)])
+          (if lst
+            (map syntax->model lst)
+            (syntax->datum stx)))))
+
+  ; Convert a syntax object to a model.
+  ;
+  ; * parent is the parent model element of the new model.
+  ; * stx is the syntax object to convert.
+  ;
+  ; Returns:
+  ; * a decorated syntax object with the 'model property
+  (define (decorate parent stx)
     (syntax-case stx (composite-port inline-composite-port name indexed-name)
       ; Set default values for missing elements in composite-port
       [(composite-port id mode iname args) (symbol? (syntax->datum #'mode))
-       (syntax->model parent #'(composite-port id 1 mode iname args))]
+       (decorate parent #'(composite-port id 1 mode iname args))]
       [(composite-port id mode iname)
-       (syntax->model parent #'(composite-port id mode iname empty))]
+       (decorate parent #'(composite-port id mode iname empty))]
       [(inline-composite-port mode iname)
-       (syntax->model parent #'(inline-composite-port mode iname empty))]
+       (decorate parent #'(inline-composite-port mode iname empty))]
 
       ; Gather names in a single list in name productions
       [(name id ...)
-       (sil:name stx parent empty (syntax->datum #'(id ...)))]
+       (syntax-property stx 'model (sil:name stx parent empty (syntax->datum #'(id ...))))]
+
       [(indexed-name id ...)
-       (sil:indexed-name stx parent empty (syntax->datum #'(id ...)))]
+       (syntax-property stx 'model (sil:indexed-name stx parent empty (syntax->datum #'(id ...))))]
 
       ; Default case: transform a production into a struct instance.
       ; Build the struct constructor name from the production rule name.
       ; Construct children model elements recursively.
       ; Attach the new element as a parent to its children elements.
       [(rule child ...) (symbol? (syntax->datum #'rule))
-       (let* ([ctor (eval (syntax->datum #'rule) silicate-ns)]
-              [args (for/list ([c (syntax->list #'(child ...))])
-                      (syntax->model #f c))]
-              [children (filter sil:model-element? (flatten args))]
-              [elt (apply ctor stx parent children args)])
-         (for ([c children])
-           (sil:set-model-element-parent! c elt))
-         elt)]
+       (let* ([children (for/list ([c (syntax->list #'(child ...))])
+                          (decorate #f c))]
+              [children-model (map syntax->model children)]
+              [children-elts (filter sil:model-element? (flatten children-model))]
+              [ctor (eval (syntax->datum #'rule) silicate-ns)]
+              [model (apply ctor stx parent children-elts children-model)])
+         ; Set the parent property on children elements.
+         (for ([c children-elts])
+           (sil:set-model-element-parent! c model))
+         (syntax-property #`(rule #,@children) 'model model))]
 
-      ; Transform a list of items into a list of transformed items.
+      ; Transform a list of items into lists of transformed items.
       [(item ...)
-       (for/list ([i (syntax->list #'(item ...))])
-         (syntax->model parent i))]
+       #`(#,@(for/list ([i (syntax->list #'(item ...))])
+               (decorate parent i)))]
 
       ; Fallback: the item is a simple token.
-      [item
-       (syntax->datum #'item)])))
+      [_ stx])))
 
 (define-syntax (main-debug stx)
   (syntax-case stx ()
     [(_ s)
-     #`(writeln (quote #,(model->racket (syntax->model #f #'s))))]))
+     #`(writeln (quote #,(model->racket (syntax->model (decorate #f #'s)))))]))
 
 (define-syntax (main stx)
   (syntax-case stx ()
     [(_ s)
-     (model->racket (syntax->model #f #'s))]))
+     (model->racket (syntax->model (decorate #f #'s)))]))
 
 (define-syntax-rule (module-begin stx)
   (#%module-begin
+    ; (main-debug stx)
     (main stx)))
-    ; (main stx)))

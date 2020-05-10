@@ -1,6 +1,6 @@
 #lang racket
 
-(require "signal.rkt")
+(require silicate/signal)
 
 ; Versions of standard functions and special forms that work on signals.
 

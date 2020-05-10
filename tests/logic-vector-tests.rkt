@@ -1,8 +1,9 @@
 
 #lang racket
 
-(require rackunit)
-(require "../src/logic-vector.rkt")
+(require
+  rackunit
+  silicate/logic-vector)
 
 (provide logic-vector-tests)
 

@@ -12,17 +12,17 @@
 ; TODO change (for ([i (in-range len)])) to (for ([i len]))
 
 (provide
-    (contract-out
-      [logic-vector?         (-> any/c boolean?)]
-      [make-logic-vector     (->* (natural-number/c) (boolean?) logic-vector?)]
-      [logic-vector-length   (-> logic-vector? natural-number/c)]
-      [logic-vector-ref      (-> logic-vector? natural-number/c boolean?)]
-      [list->logic-vector    (-> (listof boolean?) logic-vector?)]
-      [logic-vector->list    (-> logic-vector? (listof boolean?))]
-      [logic-vector->string  (-> logic-vector? string?)]
-      [string->logic-vector  (-> string? logic-vector?)]
-      [integer->logic-vector (->* (exact-integer? exact-integer?) (boolean?) logic-vector?)]
-      [logic-vector->integer (-> logic-vector? integer?)]))
+  (contract-out
+    [logic-vector?         (-> any/c boolean?)]
+    [make-logic-vector     (->* (natural-number/c) (boolean?) logic-vector?)]
+    [logic-vector-length   (-> logic-vector? natural-number/c)]
+    [logic-vector-ref      (-> logic-vector? natural-number/c boolean?)]
+    [list->logic-vector    (-> (listof boolean?) logic-vector?)]
+    [logic-vector->list    (-> logic-vector? (listof boolean?))]
+    [logic-vector->string  (-> logic-vector? string?)]
+    [string->logic-vector  (-> string? logic-vector?)]
+    [integer->logic-vector (->* (exact-integer? exact-integer?) (boolean?) logic-vector?)]
+    [logic-vector->integer (-> logic-vector? integer?)]))
 
 ; This gives the same result as (quotient n 8)
 (define (logic-vector-byte-index n)

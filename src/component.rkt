@@ -1,8 +1,10 @@
 #lang racket
 
-(require (for-syntax racket))
-(require (for-syntax racket/syntax))
-(require "signal.rkt")
+(require
+  (for-syntax
+    racket
+    racket/syntax)
+  silicate/signal)
 
 (provide
     interface

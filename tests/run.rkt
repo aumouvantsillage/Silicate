@@ -1,11 +1,11 @@
 
 #lang racket
 
-(require rackunit/text-ui)
-
-(require "signal-tests.rkt")
-(require "component-tests.rkt")
-(require "logic-vector-tests.rkt")
+(require
+  rackunit/text-ui
+  "signal-tests.rkt"
+  "component-tests.rkt"
+  "logic-vector-tests.rkt")
 
 (run-tests signal-tests)
 (run-tests component-tests)

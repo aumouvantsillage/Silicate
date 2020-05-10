@@ -1,9 +1,11 @@
 #lang racket
 
-(require (for-syntax racket))
-(require (for-syntax racket/syntax))
-(require (for-syntax silicate/metamodel))
-(require (for-syntax silicate/compiler))
+(require
+    (for-syntax
+      racket
+      racket/syntax
+      silicate/metamodel
+      silicate/compiler))
 
 (provide
   (except-out (all-defined-out) module-begin)

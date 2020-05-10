@@ -1,9 +1,10 @@
 
 #lang racket
 
-(require rackunit)
-(require "../src/signal.rkt")
-(require "../src/std.rkt")
+(require
+  rackunit
+  silicate/signal
+  silicate/std)
 
 (provide signal-tests)
 

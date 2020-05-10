@@ -1,7 +1,8 @@
 #lang racket
 
-(require rackunit)
-(require "../src/component.rkt")
+(require
+  rackunit
+  silicate/component)
 
 (provide component-tests)
 

@@ -1,7 +1,8 @@
 #lang racket
 
-(require silicate/metamodel)
-(require racket/syntax)
+(require
+  racket/syntax
+  silicate/metamodel)
 
 (provide (all-defined-out))
 

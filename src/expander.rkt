@@ -4,7 +4,7 @@
     (for-syntax
       racket
       racket/syntax
-      silicate/metamodel
+      (prefix-in sil: silicate/metamodel)
       silicate/compiler))
 
 (provide
@@ -26,22 +26,22 @@
 
       ; Gather names in a single list in name productions
       [(name id ...)
-       (sil-name stx parent empty (syntax->datum #'(id ...)))]
+       (sil:name stx parent empty (syntax->datum #'(id ...)))]
       [(indexed-name id ...)
-       (sil-indexed-name stx parent empty (syntax->datum #'(id ...)))]
+       (sil:indexed-name stx parent empty (syntax->datum #'(id ...)))]
 
       ; Default case: transform a production into a struct instance.
       ; Build the struct constructor name from the production rule name.
       ; Construct children model elements recursively.
       ; Attach the new element as a parent to its children elements.
       [(rule child ...) (symbol? (syntax->datum #'rule))
-       (let* ([ctor-id (format-id #'rule "sil-~a" #'rule)]
+       (let* ([ctor (eval (syntax->datum #'rule) silicate-ns)]
               [args (for/list ([c (syntax->list #'(child ...))])
                       (syntax->model #f c))]
-              [children (filter sil-model-element? (flatten args))]
-              [elt (apply (eval ctor-id silicate-ns) stx parent children args)])
+              [children (filter sil:model-element? (flatten args))]
+              [elt (apply ctor stx parent children args)])
          (for ([c children])
-           (set-sil-model-element-parent! c elt))
+           (sil:set-model-element-parent! c elt))
          elt)]
 
       ; Transform a list of items into a list of transformed items.
@@ -53,11 +53,17 @@
       [item
        (syntax->datum #'item)])))
 
+(define-syntax (main-debug stx)
+  (syntax-case stx ()
+    [(_ s)
+     #`(writeln (quote #,(model->racket (syntax->model #f #'s))))]))
+
 (define-syntax (main stx)
   (syntax-case stx ()
     [(_ s)
-     #`(quote #,(model->racket (syntax->model #f #'s)))]))
+     (model->racket (syntax->model #f #'s))]))
 
 (define-syntax-rule (module-begin stx)
   (#%module-begin
-    (writeln (main stx))))
+    (main stx)))
+    ; (main stx)))

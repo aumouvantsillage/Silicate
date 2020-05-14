@@ -3,7 +3,8 @@
 (require
   (for-syntax
     racket
-    racket/syntax)
+    racket/syntax
+    syntax/parse)
   silicate/signal)
 
 (provide
@@ -17,7 +18,7 @@
   ; Normalize the syntax object that represents a port, adding
   ; default multiplicity and arguments if they are missing.
   (define (port-normalize port)
-    (syntax-case port ()
+    (syntax-parse port
       ; General case: the port uses an interface with arguments
       ; and has an explicit multiplicity.
       [(id expr mode (iid arg ...)) port]
@@ -33,7 +34,7 @@
   ; Returns the list of port or parameter names.
   (define (interface-item-names items)
     (for/list ([p items])
-      (syntax-case p ()
+      (syntax-parse p
         [(pid _ ...) #'pid])))
 
   ; Create a struct type for an interface with the given id and ports.
@@ -47,7 +48,7 @@
   ; Call the constructor of the interface for a composite port.
   ; The given port must be a syntax object from normalize-port.
   (define (interface-constructor-call port)
-    (syntax-case port ()
+    (syntax-parse port
       [(id expr mode (iid arg ...))
        (with-syntax ([mk (format-ctor-id #'iid)])
          #'(if (> expr 1)
@@ -61,7 +62,8 @@
       #`(define (mk #,@(interface-item-names params))
           ; Call the default constructor and initialize each port.
           (#,id #,@(for/list ([p ports])
-                          (syntax-case p (in out)
+                          (syntax-parse p
+                            #:datum-literals [in out]
                             ; If the port is a plain input or output,
                             ; create an empty box.
                             [(_ _ in  _ ...) #'(box #f)]
@@ -70,7 +72,7 @@
 
 ; Create a new interface.
 (define-syntax (interface stx)
-  (syntax-case stx ()
+  (syntax-parse stx
     [(_ id (param ...) (port ...))
      (let ([ports  (map port-normalize (syntax->list #'(port ...)))]
            [params (syntax->list #'(param ...))])
@@ -80,7 +82,7 @@
 
 ; Create a new component.
 (define-syntax (component stx)
-  (syntax-case stx ()
+  (syntax-parse stx
     [(_ id (param ...) (port ...) body ...)
      (let ([ports  (map port-normalize (syntax->list #'(port ...)))]
            [params (syntax->list #'(param ...))])

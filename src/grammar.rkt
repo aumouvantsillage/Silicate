@@ -8,61 +8,61 @@
 ;
 ; This will create an AST node of the form: (a (a-item ...))
 
-module: /"module" ID module-item-list /"end"
+sil-module: /"module" ID sil-module-item-list /"end"
 
-/module-item-list: module-item*
+/sil-module-item-list: sil-module-item*
 
-@module-item:
-  module |
-  interface |
-  component
+@sil-module-item:
+  sil-module |
+  sil-interface |
+  sil-component
 
-interface: /"interface" ID interface-item-list
+sil-interface: /"interface" ID sil-interface-item-list
 
-/interface-item-list: /"(" interface-item (/"," interface-item)* /","? /")"
+/sil-interface-item-list: /"(" sil-interface-item (/"," sil-interface-item)* /","? /")"
 
-@interface-item:
-  parameter |
-  data-port |
-  composite-port |
-  inline-composite-port
+@sil-interface-item:
+  sil-parameter |
+  sil-data-port |
+  sil-composite-port |
+  sil-inline-composite-port
 
-parameter: ID /":" ("type" | type-expression)
+sil-parameter: ID /":" ("type" | sil-type-expression)
 
-data-port: ID /":" ("in" | "out") type-expression
+sil-data-port: ID /":" ("in" | "out") sil-type-expression
 
-composite-port: ID multiplicity? /":" ("use" | "flip") name association-list?
+sil-composite-port: ID sil-multiplicity? /":" ("use" | "flip") sil-name sil-association-list?
 
-inline-composite-port: /"::" ("use" | "flip") name association-list?
+sil-inline-composite-port: /"::" ("use" | "flip") sil-name sil-association-list?
 
-@multiplicity: /"[" expression /"]"
+@sil-multiplicity: /"[" sil-expression /"]"
 
 ; TODO named associations
-@association-list: /"(" expression-list? /")"
+@sil-association-list: /"(" sil-expression-list? /")"
 
-component: /"component" ID interface-item-list statement-list /"end"
+sil-component: /"component" ID sil-interface-item-list sil-statement-list /"end"
 
-/statement-list: statement*
+/sil-statement-list: sil-statement*
 
 ; TODO other statements
-@statement:
-  port-assignment
+@sil-statement:
+  sil-port-assignment
 
-port-assignment:
-  indexed-name /"=" expression
+sil-port-assignment:
+  sil-indexed-name /"=" sil-expression
 
-name: ID (/"." ID)*
+sil-name: ID (/"." ID)*
 
-indexed-name: ID (index | /"." ID)*
+sil-indexed-name: ID (sil-index | /"." ID)*
 
-index: /"[" expression-list /"]"
+sil-index: /"[" sil-expression-list /"]"
 
-/expression-list: expression ("," expression)* ","?
+/sil-expression-list: sil-expression ("," sil-expression)* ","?
 
 ; TODO type parameters
-@type-expression: name
+@sil-type-expression: sil-name
 
 ; TODO other expressions
-@expression:
-  name |
+@sil-expression:
+  sil-name |
   INT

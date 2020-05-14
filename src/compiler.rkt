@@ -1,17 +1,38 @@
 #lang racket
 
 (require
-  racket/syntax
-  (prefix-in sil: silicate/metamodel))
+  (for-syntax
+    racket
+    racket/syntax
+    syntax/parse
+    silicate/ast))
 
 (provide
-  model->racket)
+  (all-defined-out))
 
+(define-syntax-rule (sil-module id (item ...))
+  (module* id #f item ...))
+
+(define-for-syntax (channel-struct-id id)
+  (format-id id "~a:channel" id))
+
+(define-for-syntax (channel-constructor-id id)
+  (format-id id "make-~a" (channel-struct-id id)))
+
+(define-syntax (sil-interface stx)
+  (syntax-parse stx
+    [(_ id (item ...))
+     (let ([pids (map element-id (interface-ports stx))])
+       #`(begin
+           (struct #,(channel-struct-id #'id) #,pids)
+           (define (#,(channel-constructor-id #'id)) (void))))]))
+
+(define-syntax-rule (sil-component id (item ...) (stmt ...))
+  (define (id) (void)))
+
+#|
 (define (named-element->symbol elt)
   (string->symbol (string-join (map symbol->string (sil:name-ids (sil:named-element-fully-qualified-name elt))) "/")))
-
-(define (channel-struct-id intf)
-  (format-symbol "~a:channel" (named-element->symbol intf)))
 
 (define (channel-constructor-id elt)
   (format-symbol "make-~a" (channel-struct-id elt)))
@@ -20,12 +41,6 @@
   (format-symbol "~a:component" (named-element->symbol elt)))
 
 (define (model->racket elt)
-  (match elt
-    [(sil:module _ _ _ name items)
-     #`(module #,name racket
-         #,@(for/list ([i (in-list items)])
-              (model->racket i)))]
-
     [(sil:component stx parent children name items statements)
      #`(begin
          ; Process this component like an interface.
@@ -69,4 +84,5 @@
      ; Replace a name with the symbol that represents the target element.
      (named-element->symbol (sil:model-element-lookup-in-parent elt elt))]
 
-    [_ elt]))
+    [_ elt])
+|#

@@ -2,6 +2,7 @@
 
 (require
   syntax/parse
+  silicate/syntax-classes
   silicate/context)
 
 (provide

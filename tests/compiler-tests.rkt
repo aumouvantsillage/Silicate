@@ -81,6 +81,17 @@
       (check-pred box? (J:channel-e (K:channel-g a-K)))
       (check-pred box? (K:channel-h a-K)))
 
+    (test-case "Can construct an interface with a vector port"
+      (begin-with-context
+        (interface I ([data-port a in  integer]
+                      [data-port b out integer]))
+        (interface J ([composite-port c 3 use (name I)])))
+      (define a-J (make-J:channel))
+      (check-pred vector? (J:channel-c a-J))
+      (check-eq? (vector-length (J:channel-c a-J)) 3)
+      (for ([i (range 3)])
+        (check-pred I:channel? (vector-ref (J:channel-c a-J) i))))
+
     (test-case "Can resolve names in a module hierarchy"
       (begin-with-context
         (module M1

@@ -38,7 +38,11 @@
                        [c:composite-port
                         #:with j:interface (composite-port-interface #'c)
                         #:with jcid (channel-constructor-id (attribute j.id))
-                        #'(jcid)])))))]))
+                        #:with mult (or (attribute c.mult) #'1)
+                        #`(let ([ctor (λ (z) (jcid))])
+                            (if (> mult 1)
+                              (build-vector mult ctor)
+                              (ctor #f)))])))))]))
 
 (define-syntax-rule (component id (item ...) (stmt ...))
   (define (id) (void)))

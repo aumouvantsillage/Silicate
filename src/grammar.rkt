@@ -55,7 +55,7 @@ indexed-name: ID (index | /"." ID)*
 
 index: /"[" expression-list /"]"
 
-/expression-list: expression ("," expression)* ","?
+@expression-list: expression ("," expression)* ","?
 
 ; TODO type parameters
 @type-expression: name

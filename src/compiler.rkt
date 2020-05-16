@@ -25,12 +25,13 @@
 (define-syntax (interface stx)
   (syntax-parse stx
     [i:interface
+     #:with sid (channel-struct-id (attribute i.id))
      #:with (pt:port ...)      (interface-ports stx)
      #:with (pr:parameter ...) (interface-parameters stx)
      #`(begin
-         (struct #,(channel-struct-id (attribute i.id)) (pt.id ...))
-         (define (#,(channel-constructor-id (attribute i.id)) pr.id ...) (void)))]))
-
+         (struct sid (pt.id ...))
+         (define (#,(channel-constructor-id (attribute i.id)) pr.id ...)
+           (void)))]))
 (define-syntax-rule (component id (item ...) (stmt ...))
   (define (id) (void)))
 

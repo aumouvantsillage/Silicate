@@ -26,12 +26,20 @@
   (syntax-parse stx
     [i:interface
      #:with sid (channel-struct-id (attribute i.id))
-     #:with (pt:port ...)      (interface-ports stx)
+     #:with cid (channel-constructor-id (attribute i.id))
+     #:with (pt:port ...) (interface-ports stx)
      #:with (pr:parameter ...) (interface-parameters stx)
      #`(begin
          (struct sid (pt.id ...))
-         (define (#,(channel-constructor-id (attribute i.id)) pr.id ...)
-           (void)))]))
+         (define (cid pr.id ...)
+           (sid #,@(for/list ([p (syntax->list #'(pt ...))])
+                     (syntax-parse p
+                       [d:data-port #'(box #f)]
+                       [c:composite-port
+                        #:with j:interface (composite-port-interface #'c)
+                        #:with jcid (channel-constructor-id (attribute j.id))
+                        #'(jcid)])))))]))
+
 (define-syntax-rule (component id (item ...) (stmt ...))
   (define (id) (void)))
 

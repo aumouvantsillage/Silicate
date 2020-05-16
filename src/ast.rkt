@@ -9,7 +9,8 @@
   element-type
   element-id
   interface-ports
-  interface-parameters)
+  interface-parameters
+  composite-port-interface)
 
 (define (name-ids stx)
   (syntax-parse stx
@@ -29,7 +30,7 @@
                 (syntax-parse it
                   [p:port it]
                   [p:inline-composite-port
-                   (interface-ports (name-resolve (attribute p.name) it))]
+                   (interface-ports (name-resolve (attribute p.type) it))]
                   [_ '()])))]))
 
 (define (interface-parameters stx)
@@ -37,3 +38,8 @@
     [i:interface
      (filter (syntax-parser [p:parameter #'p] [_ #f])
              (syntax->list #'(i.item ...)))]))
+
+(define (composite-port-interface stx)
+  (syntax-parse stx
+    [p:composite-port
+     (name-resolve (attribute p.type) stx)]))

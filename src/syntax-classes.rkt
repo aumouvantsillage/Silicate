@@ -28,7 +28,7 @@
 
 (define-syntax-class inline-composite-port
   #:datum-literals [inline-composite-port]
-  (pattern (inline-composite-port mode name arg ...)))
+  (pattern (inline-composite-port mode type arg ...)))
 
 (define-syntax-class port
   (pattern (~or* super:data-port super:composite-port)

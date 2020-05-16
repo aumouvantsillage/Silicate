@@ -10,8 +10,11 @@
 (provide
   (all-defined-out))
 
-(define-syntax-rule (sil-module id (item ...))
-  (module* id #f item ...))
+(define-syntax (sil-module stx)
+  (syntax-parse stx
+    [m:module
+     #'(begin m.item ...)]))
+  ; (module* id #f item ...))
 
 (define-for-syntax (channel-struct-id id)
   (format-id id "~a:channel" id))

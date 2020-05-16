@@ -4,13 +4,14 @@
   rackunit
   silicate/compiler
   (for-syntax
+    syntax/parse
     silicate/syntax-classes
     silicate/context))
 
 (provide compiler-tests)
 
 (define-syntax (begin-with-context stx)
-  (syntax-case stx ()
+  (syntax-parse stx
     [(_ item ...)
      #`(begin #,@(decorate (make-context) #'(item ...)))]))
 
@@ -44,4 +45,17 @@
       (check-eq? (K:channel-a a-K) 30)
       (check-eq? (K:channel-b a-K) 40)
       (check-eq? (K:channel-d a-K) 50)
-      (check-eq? (K:channel-f a-K) 60))))
+      (check-eq? (K:channel-f a-K) 60))
+
+    (test-case "Can resolve names in a module hierarchy"
+      (begin-with-context
+        (sil-module M1
+          (sil-module M2
+            (sil-interface I ([sil-data-port a in  integer]
+                              [sil-data-port b out integer]))))
+        (sil-module M3
+          (sil-module M4
+            (sil-interface J ([sil-inline-composite-port use (sil-name M1 M2 I)])))))
+      (define a-J (J:channel 10 20))
+      (check-eq? (J:channel-a a-J) 10)
+      (check-eq? (J:channel-b a-J) 20))))

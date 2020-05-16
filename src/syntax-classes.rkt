@@ -4,6 +4,7 @@
   syntax/parse)
 
 (provide
+  module
   interface
   port
   data-port
@@ -11,6 +12,10 @@
   inline-composite-port
   parameter
   name)
+
+(define-syntax-class module
+  #:datum-literals [sil-module]
+  (pattern (sil-module id:identifier item ...)))
 
 (define-syntax-class data-port
   #:datum-literals [sil-data-port]

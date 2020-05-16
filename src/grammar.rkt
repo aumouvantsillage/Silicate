@@ -8,9 +8,7 @@
 ;
 ; This will create an AST node of the form: (a (a-item ...))
 
-sil-module: /"module" ID sil-module-item-list /"end"
-
-/sil-module-item-list: sil-module-item*
+sil-module: /"module" ID sil-module-item* /"end"
 
 @sil-module-item:
   sil-module |

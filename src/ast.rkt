@@ -35,7 +35,5 @@
 (define (interface-parameters stx)
   (syntax-parse stx
     [i:interface
-     (flatten (for/list ([it (syntax->list #'(i.item ...))])
-                (syntax-parse it
-                  [p:parameter it]
-                  [_ '()])))]))
+     (filter (syntax-parser [p:parameter #'p] [_ #f])
+             (syntax->list #'(i.item ...)))]))

@@ -10,16 +10,16 @@
   interface-parameters
   composite-port-interface)
 
-; Returns the list of ids in a name.
+; Return the list of ids in a name.
 (define (name-ids stx)
   (syntax-parse stx
     [n:name (syntax->datum #'(n.id ...))]))
 
-; Returns the syntax object corresponding to the given name.
+; Return the syntax object corresponding to the given name.
 (define (name-resolve name)
   (context-resolve (name-ids name) name))
 
-; Returns the list of ports in the given interface.
+; Return the list of ports in the given interface.
 ; This function will collect all ports in inline composite ports.
 (define (interface-ports stx)
   (syntax-parse stx
@@ -31,14 +31,14 @@
                    (interface-ports (name-resolve (attribute p.type)))]
                   [_ '()])))]))
 
-; Returns the list of parameters in the given interface.
+; Return the list of parameters in the given interface.
 (define (interface-parameters stx)
   (syntax-parse stx
     [i:interface
      (filter (syntax-parser [p:parameter #'p] [_ #f])
              (syntax->list #'(i.item ...)))]))
 
-; Returns the target interface of an inline composite port.
+; Return the target interface of an inline composite port.
 (define (composite-port-interface stx)
   (syntax-parse stx
     [p:composite-port

@@ -31,7 +31,7 @@
       ; Invalid case.
       [_ (error "Invalid port definition" port)]))
 
-  ; Returns the list of port or parameter names.
+  ; Return the list of port or parameter names.
   (define (interface-item-names items)
     (for/list ([p items])
       (syntax-parse p

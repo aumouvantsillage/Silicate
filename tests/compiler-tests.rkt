@@ -18,22 +18,22 @@
 (define compiler-tests
   (test-suite "Compiler"
     (test-case "Interface with data ports is mapped to struct"
-      (sil-interface I ([sil-data-port a in  integer]
-                        [sil-data-port b out integer]))
+      (interface I ([data-port a in  integer]
+                    [data-port b out integer]))
       (define an-I (I:channel 10 20))
       (check-eq? (I:channel-a an-I) 10)
       (check-eq? (I:channel-b an-I) 20))
 
     (test-case "Interface with inline composite ports is mapped to struct"
       (begin-with-context
-        (sil-interface I ([sil-data-port a in  integer]
-                          [sil-data-port b out integer]))
-        (sil-interface J ([sil-data-port c in  integer]
-                          [sil-inline-composite-port use (sil-name I)]
-                          [sil-data-port d out integer]))
-        (sil-interface K ([sil-data-port e in  integer]
-                          [sil-inline-composite-port use (sil-name J)]
-                          [sil-data-port f out integer])))
+        (interface I ([data-port a in  integer]
+                      [data-port b out integer]))
+        (interface J ([data-port c in  integer]
+                      [inline-composite-port use (name I)]
+                      [data-port d out integer]))
+        (interface K ([data-port e in  integer]
+                      [inline-composite-port use (name J)]
+                      [data-port f out integer])))
       (define a-J (J:channel 10 20 30 40))
       (check-eq? (J:channel-c a-J) 10)
       (check-eq? (J:channel-a a-J) 20)
@@ -47,15 +47,22 @@
       (check-eq? (K:channel-d a-K) 50)
       (check-eq? (K:channel-f a-K) 60))
 
+    (test-case "Can construct interface with parameters"
+      (interface I ([parameter N integer]
+                    [data-port a in  integer]
+                    [data-port b out integer]))
+      (define an-I (make-I:channel 30))
+      (check-pred I:channel? an-I))
+
     (test-case "Can resolve names in a module hierarchy"
       (begin-with-context
-        (sil-module M1
-          (sil-module M2
-            (sil-interface I ([sil-data-port a in  integer]
-                              [sil-data-port b out integer]))))
-        (sil-module M3
-          (sil-module M4
-            (sil-interface J ([sil-inline-composite-port use (sil-name M1 M2 I)])))))
+        (module M1
+          (module M2
+            (interface I ([data-port a in  integer]
+                          [data-port b out integer]))))
+        (module M3
+          (module M4
+            (interface J ([inline-composite-port use (name M1 M2 I)])))))
       (define a-J (J:channel 10 20))
       (check-eq? (J:channel-a a-J) 10)
       (check-eq? (J:channel-b a-J) 20))))

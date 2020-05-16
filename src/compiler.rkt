@@ -10,7 +10,7 @@
 (provide
   (all-defined-out))
 
-(define-syntax (sil-module stx)
+(define-syntax (module stx)
   (syntax-parse stx
     [m:module
      #'(begin m.item ...)]))
@@ -22,7 +22,7 @@
 (define-for-syntax (channel-constructor-id id)
   (format-id id "make-~a" (channel-struct-id id)))
 
-(define-syntax (sil-interface stx)
+(define-syntax (interface stx)
   (syntax-parse stx
     [i:interface
      #:with (pt:port ...)      (interface-ports stx)
@@ -31,7 +31,7 @@
          (struct #,(channel-struct-id (attribute i.id)) (pt.id ...))
          (define (#,(channel-constructor-id (attribute i.id)) pr.id ...) (void)))]))
 
-(define-syntax-rule (sil-component id (item ...) (stmt ...))
+(define-syntax-rule (component id (item ...) (stmt ...))
   (define (id) (void)))
 
 #|

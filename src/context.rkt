@@ -14,18 +14,18 @@
 
 (define (is-context? stx)
   (member (element-type stx)
-    '(sil-module
-      sil-interface
-      sil-component)))
+    '(module
+      interface
+      component)))
 
 (define (add-to-context? stx)
   (member (element-type stx)
-    '(sil-module
-      sil-interface
-      sil-component
-      sil-parameter
-      sil-data-port
-      sil-composite-port)))
+    '(module
+      interface
+      component
+      parameter
+      data-port
+      composite-port)))
 
 (struct context (parent table))
 

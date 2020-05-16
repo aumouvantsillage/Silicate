@@ -3,7 +3,9 @@
 (require
   rackunit
   silicate/compiler
-  (for-syntax silicate/context))
+  (for-syntax
+    silicate/syntax-classes
+    silicate/context))
 
 (provide compiler-tests)
 

@@ -52,12 +52,6 @@
 (define (children-context stx)
   (syntax-property stx 'children-context))
 
-(define (resolve stx ids)
-  (define root (context-lookup (parent-context stx) (first ids)))
-  (for/fold ([acc root])
-            ([id (rest ids)])
-    (and acc (context-ref (children-context acc) id))))
-
 (define (decorate ctx stx)
   (syntax-parse stx
     [(rule child ...)

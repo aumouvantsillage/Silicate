@@ -2,9 +2,9 @@
 
 (require
   (for-syntax
-    racket
     racket/syntax
     syntax/parse
+    silicate/syntax-classes
     silicate/ast))
 
 (provide
@@ -21,11 +21,12 @@
 
 (define-syntax (sil-interface stx)
   (syntax-parse stx
-    [(_ id (item ...))
-     (let ([pids (map element-id (interface-ports stx))])
-       #`(begin
-           (struct #,(channel-struct-id #'id) #,pids)
-           (define (#,(channel-constructor-id #'id)) (void))))]))
+    [i:interface
+     #:with (pt:port ...)      (interface-ports stx)
+     #:with (pr:parameter ...) (interface-parameters stx)
+     #`(begin
+         (struct #,(channel-struct-id (attribute i.id)) (pt.id ...))
+         (define (#,(channel-constructor-id (attribute i.id)) pr.id ...) (void)))]))
 
 (define-syntax-rule (sil-component id (item ...) (stmt ...))
   (define (id) (void)))

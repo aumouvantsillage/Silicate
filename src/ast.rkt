@@ -8,17 +8,34 @@
 (provide
   element-type
   element-id
-  interface-ports)
+  interface-ports
+  interface-parameters)
+
+(define (name-ids stx)
+  (syntax-parse stx
+    [n:name (syntax->datum #'(n.id ...))]))
+
+(define (name-resolve name stx)
+  (define ids (name-ids name))
+  (define root (context-lookup (parent-context stx) (first ids)))
+  (for/fold ([acc root])
+            ([id (rest ids)])
+    (and acc (context-ref (children-context acc) id))))
 
 (define (interface-ports stx)
   (syntax-parse stx
-    #:datum-literals [sil-interface sil-component]
-    [(sil-interface _ (item ...))
-     (flatten (for/list ([it (syntax->list #'(item ...))])
+    [i:interface
+     (flatten (for/list ([it (syntax->list #'(i.item ...))])
                 (syntax-parse it
-                  #:datum-literals [sil-data-port sil-composite-port sil-inline-composite-port sil-name]
-                  [(sil-data-port      _ ...) it]
-                  [(sil-composite-port _ ...) it]
-                  [(sil-inline-composite-port _ (sil-name id ...) _ ...)
-                   (interface-ports (resolve it (syntax->datum #'(id ...))))]
+                  [p:port it]
+                  [p:inline-composite-port
+                   (interface-ports (name-resolve (attribute p.name) it))]
+                  [_ '()])))]))
+
+(define (interface-parameters stx)
+  (syntax-parse stx
+    [i:interface
+     (flatten (for/list ([it (syntax->list #'(i.item ...))])
+                (syntax-parse it
+                  [p:parameter it]
                   [_ '()])))]))

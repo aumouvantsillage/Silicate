@@ -2,18 +2,17 @@
 
 (require
   rackunit
+  syntax/parse/define
   silicate/compiler
   (for-syntax
-    syntax/parse
     silicate/syntax-classes
     silicate/context))
 
 (provide compiler-tests)
 
-(define-syntax (begin-with-context stx)
-  (syntax-parse stx
-    [(_ item ...)
-     #`(begin #,@(decorate (make-context) #'(item ...)))]))
+(define-syntax-parser begin-with-context
+  [(_ item ...)
+   #`(begin #,@(decorate (make-context) #'(item ...)))])
 
 (define compiler-tests
   (test-suite "Compiler"

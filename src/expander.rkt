@@ -1,6 +1,7 @@
 #lang racket
 
 (require
+    syntax/parse/define
     silicate/compiler
     (for-syntax
       syntax/parse
@@ -11,10 +12,9 @@
   (rename-out [module-begin #%module-begin])
   (all-from-out silicate/compiler))
 
-(define-syntax (begin-with-context stx)
-  (syntax-parse stx
+(define-syntax-parser begin-with-context
     [(_ item ...)
-     #`(begin #,@(decorate (make-context) #'(item ...)))]))
+     #`(begin #,@(decorate (make-context) #'(item ...)))])
 
 (define-syntax-rule (module-begin form)
   (#%module-begin (begin-with-context form)))

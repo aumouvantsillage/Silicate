@@ -64,8 +64,8 @@
     [_                ctx]))
 
 ; Return the id of a syntax object if it belongs to the add-to-context class.
-(define element-id
-  (syntax-parser
+(define (element-id stx)
+  (syntax-parse stx
     [c:add-to-context (syntax->datum (attribute c.id))]
     [_                #f]))
 

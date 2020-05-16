@@ -1,6 +1,7 @@
 #lang racket
 
 (require
+  syntax/parse/define
   (for-syntax
     (except-in racket module interface)
     racket/syntax
@@ -15,10 +16,9 @@
   name)
 
 ; FIXME Should we generate Racket modules?
-(define-syntax (module stx)
-  (syntax-parse stx
-    [m:module
-     #'(begin m.item ...)]))
+(define-syntax-parser module
+  [m:module
+   #'(begin m.item ...)])
   ; (module* id #f item ...))
 
 ; Convert the given interface id into a struct id
@@ -33,27 +33,26 @@
 
 ; Convert an interface into a channel struct type and
 ; a channel constructor function.
-(define-syntax (interface stx)
-  (syntax-parse stx
-    [i:interface
-     #:with sid (channel-struct-id (attribute i.id))
-     #:with cid (channel-constructor-id (attribute i.id))
-     #:with (pt:port ...) (interface-ports stx)
-     #:with (pr:parameter ...) (interface-parameters stx)
-     #`(begin
-         (struct sid (pt.id ...))
-         (define (cid pr.id ...)
-           (sid #,@(for/list ([p (syntax->list #'(pt ...))])
-                     (syntax-parse p
-                       [d:data-port #'(box #f)]
-                       [c:composite-port
-                        #:with j:interface (composite-port-interface #'c)
-                        #:with jcid (channel-constructor-id (attribute j.id))
-                        #:with mult (or (attribute c.mult) #'1)
-                        #`(let ([ctor (λ (z) (jcid c.arg ...))])
-                            (if (> mult 1)
-                              (build-vector mult ctor)
-                              (ctor #f)))])))))]))
+(define-syntax-parser interface
+  [i:interface
+   #:with sid (channel-struct-id (attribute i.id))
+   #:with cid (channel-constructor-id (attribute i.id))
+   #:with (pt:port ...) (interface-ports this-syntax)
+   #:with (pr:parameter ...) (interface-parameters this-syntax)
+   #`(begin
+       (struct sid (pt.id ...))
+       (define (cid pr.id ...)
+         (sid #,@(for/list ([p (syntax->list #'(pt ...))])
+                   (syntax-parse p
+                     [d:data-port #'(box #f)]
+                     [c:composite-port
+                      #:with j:interface (composite-port-interface #'c)
+                      #:with jcid (channel-constructor-id (attribute j.id))
+                      #:with mult (or (attribute c.mult) #'1)
+                      #`(let ([ctor (λ (z) (jcid c.arg ...))])
+                          (if (> mult 1)
+                            (build-vector mult ctor)
+                            (ctor #f)))])))))])
 
 ; TODO Convert a component into a channel struct type,
 ; a channel constructor function, and an implementation function.
@@ -62,7 +61,6 @@
 
 ; Convert a name into a Racket expression.
 ; FIXME This works only if the name contains only one id
-(define-syntax (name stx)
-  (syntax-parse stx
+(define-syntax-parser name
     [n:name
-     (datum->syntax stx (last (syntax->list #'(n.id ...))))]))
+     (datum->syntax this-syntax (last (syntax->list #'(n.id ...))))])

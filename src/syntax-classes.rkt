@@ -4,6 +4,8 @@
   syntax/parse)
 
 (provide
+  create-context
+  add-to-context
   module
   interface
   port
@@ -12,6 +14,20 @@
   inline-composite-port
   parameter
   name)
+
+(define-syntax-class create-context
+  (pattern sub:module)
+  (pattern sub:interface)
+  (pattern sub:component))
+
+(define-syntax-class add-to-context
+  (pattern (~or* sub:module
+                 sub:interface
+                 sub:component
+                 sub:parameter
+                 sub:data-port
+                 sub:composite-port)
+    #:attr id (attribute sub.id)))
 
 (define-syntax-class port-mode
   (pattern (~datum in))
@@ -46,6 +62,10 @@
 (define-syntax-class interface
   #:datum-literals [interface]
   (pattern (interface id:identifier (item ...))))
+
+(define-syntax-class component
+  #:datum-literals [component]
+  (pattern (component id:identifier (item ...) stmt ...)))
 
 (define-syntax-class name
   #:datum-literals [name]

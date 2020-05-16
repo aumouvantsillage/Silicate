@@ -92,6 +92,32 @@
       (for ([i (range 3)])
         (check-pred I:channel? (vector-ref (J:channel-c a-J) i))))
 
+    (test-case "Can construct an interface with arguments"
+      (begin-with-context
+        (interface I ([data-port a in  integer]
+                      [data-port b out integer]))
+        (interface J ([parameter N integer]
+                      [composite-port c (name N) use (name I)])))
+      (define a-J (make-J:channel 3))
+      (check-pred vector? (J:channel-c a-J))
+      (check-eq? (vector-length (J:channel-c a-J)) 3)
+      (for ([i (range 3)])
+        (check-pred I:channel? (vector-ref (J:channel-c a-J) i))))
+
+    (test-case "Can construct a composite port with arguments"
+      (begin-with-context
+        (interface I ([data-port a in  integer]
+                      [data-port b out integer]))
+        (interface J ([parameter N integer]
+                      [composite-port c (name N) use (name I)]))
+        (interface K ([parameter M integer]
+                      [composite-port d use (name J) (name M)])))
+      (define a-K (make-K:channel 3))
+      (check-pred vector? (J:channel-c (K:channel-d a-K)))
+      (check-eq? (vector-length (J:channel-c (K:channel-d a-K))) 3)
+      (for ([i (range 3)])
+        (check-pred I:channel? (vector-ref (J:channel-c (K:channel-d a-K)) i))))
+
     (test-case "Can resolve names in a module hierarchy"
       (begin-with-context
         (module M1

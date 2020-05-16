@@ -1,31 +1,13 @@
 #lang racket
 
 (require
-  syntax/parse)
+  syntax/parse
+  silicate/syntax-classes)
 
 (provide
-  (all-defined-out))
-
-(define (element-type stx)
-  (first (syntax->datum stx)))
-
-(define (element-id stx)
-  (second (syntax->datum stx)))
-
-(define (is-context? stx)
-  (member (element-type stx)
-    '(module
-      interface
-      component)))
-
-(define (add-to-context? stx)
-  (member (element-type stx)
-    '(module
-      interface
-      component
-      parameter
-      data-port
-      composite-port)))
+  make-context
+  context-resolve
+  decorate)
 
 (struct context (parent table))
 
@@ -52,18 +34,29 @@
 (define (children-context stx)
   (syntax-property stx 'children-context))
 
+(define (make-children-context ctx stx)
+  (syntax-parse stx
+    [c:create-context (make-context ctx)]
+    [_                ctx]))
+
+(define element-id
+  (syntax-parser
+    [c:add-to-context (syntax->datum (attribute c.id))]
+    [_                #f]))
+
 (define (decorate ctx stx)
   (syntax-parse stx
     [(rule child ...)
-     #:when (symbol? (element-type stx))
-     (let* ([children-ctx (if (is-context? stx) (make-context ctx) ctx)]
+     #:when (symbol? (syntax->datum #'rule))
+     (let* ([id (element-id stx)]
+            [children-ctx (make-children-context ctx stx)]
             [children (for/list ([c (syntax->list #'(child ...))])
                         (decorate children-ctx c))]
             [stx1 #`(rule #,@children)]
             [stx2 (syntax-property stx1 'parent-context ctx)]
             [stx3 (syntax-property stx2 'children-context children-ctx)])
-       (when (add-to-context? stx)
-         (context-set! ctx (element-id stx) stx3))
+       (when id
+         (context-set! ctx id stx3))
        stx3)]
 
     ; Transform a list of items into a list of decorated items.
@@ -73,3 +66,9 @@
 
     ; Fallback: the current syntax object is a simple token.
     [_ stx]))
+
+(define (context-resolve ids stx)
+  (define root (context-lookup (parent-context stx) (first ids)))
+  (for/fold ([acc root])
+            ([id (rest ids)])
+    (and acc (context-ref (children-context acc) id))))

@@ -8,8 +8,6 @@
   silicate/signal)
 
 (provide
-    interface
-    component
     port-ref
     port-set!)
 

@@ -17,13 +17,13 @@
 
 ; Return the syntax object corresponding to the given name.
 (define (name-resolve name)
-  (context-resolve (name-ids name) name))
+  (context-resolve name (name-ids name)))
 
 ; Return the list of ports in the given interface.
 ; This function will collect all ports in inline composite ports.
 (define (interface-ports stx)
   (syntax-parse stx
-    [i:interface
+    [i:interface-or-component
      (flatten (for/list ([it (syntax->list #'(i.item ...))])
                 (syntax-parse it
                   [p:port it]
@@ -34,8 +34,8 @@
 ; Return the list of parameters in the given interface.
 (define (interface-parameters stx)
   (syntax-parse stx
-    [i:interface
-     (filter (syntax-parser [p:parameter #'p] [_ #f])
+    [i:interface-or-component
+     (filter (syntax-parser [p:parameter #t] [_ #f])
              (syntax->list #'(i.item ...)))]))
 
 ; Return the target interface of an inline composite port.

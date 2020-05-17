@@ -8,12 +8,16 @@
   add-to-context
   module
   interface
+  component
+  interface-or-component
   port
   data-port
   composite-port
   inline-composite-port
   parameter
-  name)
+  name
+  indexed-name
+  expression)
 
 (define-syntax-class create-context
   (pattern sub:module)
@@ -65,11 +69,20 @@
 
 (define-syntax-class component
   #:datum-literals [component]
-  (pattern (component id:identifier (item ...) stmt ...)))
+  (pattern (component id:identifier (item ...) body ...)))
+
+(define-syntax-class interface-or-component
+  (pattern (~or* sub:interface sub:component)
+    #:attr id (attribute sub.id)
+    #:attr (item 1) (attribute sub.item)))
 
 (define-syntax-class name
   #:datum-literals [name]
   (pattern (name id:identifier ...)))
+
+(define-syntax-class indexed-name
+  #:datum-literals [indexed-name]
+  (pattern (indexed-name item ...)))
 
 (define-syntax-class expression
   (pattern (~or* sub:name sub:number)))

@@ -50,7 +50,7 @@
 ;    starting from the parent context of stx.
 ; 2. The rest of the list is looked in the chain of children contexts
 ;    starting from the children context of the syntax object found in step 1.
-(define (context-resolve ids stx)
+(define (context-resolve stx ids)
   (define root (context-lookup (parent-context stx) (first ids)))
   (for/fold ([acc root])
             ([id (rest ids)])

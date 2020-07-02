@@ -8,12 +8,7 @@
 ;
 ; This will create an AST node of the form: (a (a-item ...))
 
-module: /"module" ID module-item* /"end"
-
-@module-item:
-  module |
-  interface |
-  component
+module: (interface | component)*
 
 interface: /"interface" ID interface-item-list
 
@@ -25,42 +20,47 @@ component: /"component" ID interface-item-list statement-list /"end"
   parameter |
   data-port |
   composite-port |
-  inline-composite-port
+  inline-composite-port |
+  constant
 
-parameter: ID /":" ("type" | type-expression)
+parameter: ID /":" /"param" ("type" | type-expression)
+
+constant: ID /":" /"const" type-expression /"=" expression
 
 data-port: ID /":" ("in" | "out") type-expression
 
-composite-port: ID multiplicity? /":" ("use" | "flip") name association-list?
+composite-port: ID multiplicity? /":" ("use" | "flip") name argument-list?
 
-inline-composite-port: /"::" ("use" | "flip") name association-list?
+inline-composite-port: /"::" ("use" | "flip") name argument-list?
 
-@multiplicity: /"[" expression /"]"
+multiplicity: /"[" expression /"]"
 
-; TODO named associations
-@association-list: /"(" expression-list? /")"
+; TODO named arguments
+@argument-list: /"(" expression-list? /")"
 
 /statement-list: statement*
 
 ; TODO other statements
 @statement:
-  port-assignment
+  assignment
 
-port-assignment:
-  indexed-name /"=" expression
+assignment:
+  expression /"=" expression
 
-name: ID (/"." ID)*
+; TODO other expressions
+@expression:
+  name-expr |
+  indexed-expr |
+  literal-expr |
+  /"(" expression /")"
 
-indexed-name: ID (index | /"." ID)*
+name-expr: ID
 
-index: /"[" expression-list /"]"
+indexed-expr: expression /"[" expression-list /"]"
+
+literal-expr: INT
 
 @expression-list: expression ("," expression)* ","?
 
 ; TODO type parameters
 @type-expression: name
-
-; TODO other expressions
-@expression:
-  name |
-  INT

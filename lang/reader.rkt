@@ -1,10 +1,10 @@
 #lang s-exp syntax/module-reader
-silicate/expander
+silicate/lang/expander
 #:read silicate-read
 #:read-syntax silicate-read-syntax
 #:whole-body-readers? #t
 
-(require silicate/lexer silicate/grammar)
+(require silicate/lib/lexer silicate/lib/grammar)
 
 (define (silicate-read in)
   (syntax->datum (silicate-read-syntax #f in)))

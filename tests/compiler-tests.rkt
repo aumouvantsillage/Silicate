@@ -3,15 +3,17 @@
 (require
   rackunit
   silicate/context-wrapper
-  silicate/compiler)
+  silicate/compiler
+  silicate/signal)
 
 (provide compiler-tests)
 
 (define compiler-tests
   (test-suite "Compiler"
     (test-case "Interface with data ports is mapped to channel struct"
-      (interface I ([data-port a in  integer]
-                    [data-port b out integer]))
+      (begin-with-context
+        (interface I ([data-port a in  integer]
+                      [data-port b out integer])))
 
       (define an-I (I:channel 10 20))
       (check-eq? (I:channel-a an-I) 10)
@@ -41,10 +43,11 @@
       (check-eq? (K:channel-f a-K) 60))
 
     (test-case "Can construct a channel for an interface with simple ports"
-      (interface I ([parameter N integer]
-                    [data-port a in  integer]
-                    [data-port b out integer]))
-      (define an-I (make-I:channel 30))
+      (begin-with-context
+        (interface I ([parameter N integer]
+                      [data-port a in  integer]
+                      [data-port b out integer])))
+      (define an-I (make-channel-I 30))
       (check-pred box? (I:channel-a an-I))
       (check-pred box? (I:channel-b an-I)))
 
@@ -59,14 +62,14 @@
                       [composite-port g use (name J)]
                       [data-port h out integer])))
 
-      (define a-J (make-J:channel))
+      (define a-J (make-channel-J))
       (check-pred box? (J:channel-c a-J))
       (check-pred I:channel? (J:channel-d a-J))
       (check-pred box? (I:channel-a (J:channel-d a-J)))
       (check-pred box? (I:channel-b (J:channel-d a-J)))
       (check-pred box? (J:channel-e a-J))
 
-      (define a-K (make-K:channel))
+      (define a-K (make-channel-K))
       (check-pred box? (K:channel-f a-K))
       (check-pred J:channel? (K:channel-g a-K))
       (check-pred box? (J:channel-c (K:channel-g a-K)))
@@ -81,7 +84,7 @@
                       [data-port b out integer]))
         (interface J ([composite-port c 3 use (name I)])))
 
-      (define a-J (make-J:channel))
+      (define a-J (make-channel-J))
       (check-pred vector? (J:channel-c a-J))
       (check-eq? (vector-length (J:channel-c a-J)) 3)
       (for ([i (range 3)])
@@ -92,8 +95,8 @@
         (interface I ([data-port a in  integer]
                       [data-port b out integer]))
         (interface J ([parameter N integer]
-                      [composite-port c (name N) use (name I)])))
-      (define a-J (make-J:channel 3))
+                      [composite-port c (indexed-name N) use (name I)])))
+      (define a-J (make-channel-J 3))
       (check-pred vector? (J:channel-c a-J))
       (check-eq? (vector-length (J:channel-c a-J)) 3)
       (for ([i (range 3)])
@@ -104,10 +107,10 @@
         (interface I ([data-port a in  integer]
                       [data-port b out integer]))
         (interface J ([parameter N integer]
-                      [composite-port c (name N) use (name I)]))
+                      [composite-port c (indexed-name N) use (name I)]))
         (interface K ([parameter M integer]
-                      [composite-port d use (name J) (name M)])))
-      (define a-K (make-K:channel 3))
+                      [composite-port d use (name J) (indexed-name M)])))
+      (define a-K (make-channel-K 3))
       (check-pred vector? (J:channel-c (K:channel-d a-K)))
       (check-eq? (vector-length (J:channel-c (K:channel-d a-K))) 3)
       (for ([i (range 3)])
@@ -127,9 +130,31 @@
       (check-eq? (J:channel-b a-J) 20))
 
     (test-case "Can construct a channel for a component with simple ports"
-      (component C ([parameter N integer]
-                    [data-port a in  integer]
-                    [data-port b out integer]))
-      (define a-C (make-C:channel 30))
+      (begin-with-context
+        (component C ([parameter N integer]
+                      [data-port a in  integer]
+                      [data-port b out integer])))
+      (define a-C (make-channel-C 30))
       (check-pred box? (C:channel-a a-C))
-      (check-pred box? (C:channel-b a-C)))))
+      (check-pred box? (C:channel-b a-C)))
+
+    (test-case "Can instantiate a component with simple ports"
+      (begin-with-context
+        (component C ([parameter N integer]
+                      [data-port a in  integer]
+                      [data-port b out integer])))
+      (define a-C (C:component 30))
+      (check-pred C:channel? a-C)
+      (check-pred box? (C:channel-a a-C))
+      (check-pred box? (C:channel-b a-C)))
+
+    (test-case "Can assign a simple port to another simple port"
+      (begin-with-context
+        (component C ([data-port a in (name integer)]
+                      [data-port b out (name integer)])
+          (assignment (indexed-name b) (indexed-name a))))
+      (define a-C (C:component))
+      (define a-C-b (unbox (C:channel-b a-C)))
+      (define a-C-a (static 23))
+      (set-box! (C:channel-a a-C) a-C-a)
+      (check-equal? (signal-take a-C-b 5) (signal-take a-C-a 5)))))

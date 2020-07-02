@@ -9,7 +9,7 @@
   (lexer-file-path path)
   (define silicate-lexer
     (lexer-src-pos
-      [(:or "module" "interface" "component" "end" "type" "in" "out" "use" "flip" "::" (char-set ".:,()[]="))
+      [(:or "interface" "component" "end" "type" "in" "out" "use" "flip" "::" (char-set ".:,()[]="))
        (token lexeme (string->symbol lexeme))]
       [(:seq alphabetic (:* (:or alphabetic numeric)))
        (token 'ID (string->symbol lexeme))]

@@ -3,8 +3,7 @@
 
 (require
   rackunit
-  silicate/signal
-  silicate/std)
+  silicate)
 
 (provide signal-tests)
 

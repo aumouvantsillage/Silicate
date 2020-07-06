@@ -29,9 +29,9 @@ constant: ID /":" /"const" type-expression /"=" expression
 
 data-port: ID /":" ("in" | "out") type-expression
 
-composite-port: ID multiplicity? /":" ("use" | "flip") name argument-list?
+composite-port: ID multiplicity? /":" ("use" | "flip") ID argument-list?
 
-inline-composite-port: /"::" ("use" | "flip") name argument-list?
+inline-composite-port: /"::" ("use" | "flip") ID argument-list?
 
 multiplicity: /"[" expression /"]"
 
@@ -49,14 +49,20 @@ assignment:
 
 ; TODO other expressions
 @expression:
+  simple-expr
+
+@simple-expr:
   name-expr |
+  field-expr |
   indexed-expr |
   literal-expr |
   /"(" expression /")"
 
 name-expr: ID
 
-indexed-expr: expression /"[" expression-list /"]"
+field-expr: simple-expr /"." ID
+
+indexed-expr: simple-expr /"[" expression-list /"]"
 
 literal-expr: INT
 

@@ -34,6 +34,8 @@
 
 (struct name-expr node (name))
 
+(struct field-expr node (expr field-name))
+
 (struct indexed-expr node (expr indices))
 
 (struct literal-expr node (value))

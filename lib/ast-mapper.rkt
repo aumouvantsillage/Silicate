@@ -5,19 +5,26 @@
   (prefix-in ast: "ast.rkt")
   "scope.rkt")
 
-(provide syntax->ast)
+(provide
+  (contract-out
+    [syntax->ast (-> syntax?   ast:node?)]
+    [ast->syntax (-> ast:node? syntax?)]
+    [ast->proc   (-> ast:node? syntax?)]))
 
 (define (bind-named-elt! elt)
   (bind! (ast:named-elt-name elt) elt))
 
 (define (syntax->ast stx)
   (syntax-parse stx
-    #:datum-literals [begin-silicate interface component
+    #:datum-literals [begin-silicate module interface component
                       data-port composite-port inline-composite-port
                       multiplicity in out use flip
                       assign
                       name-exp index-exp]
-    [(begin-silicate body ...)
+    [(begin-silicate mod)
+     (syntax->ast #'mod)]
+
+    [(module body ...)
      (with-scope
        (ast:module stx (map syntax->ast (attribute body))))]
 
@@ -41,29 +48,41 @@
      (define m (attribute mult))
      (bind-named-elt!
        (ast:composite-port stx #'name (syntax->datum #'mode)
-         (and m (syntax->ast m)) (syntax->ast #'type)
+         (and m (syntax->ast m)) (add-scope #'type)
          (map syntax->ast (attribute arg))))]
 
     [(inline-composite-port mode type arg ...)
      (ast:inline-composite-port stx (syntax->datum #'mode)
-       (syntax->ast #'type) (map syntax->ast (attribute arg)))]
+       (add-scope #'type) (map syntax->ast (attribute arg)))]
 
     [(parameter name type)
      (bind-named-elt!
-       (ast:parameter #'name (syntax->ast #'type)))]
+       (ast:parameter stx #'name (syntax->ast #'type)))]
 
     [(constant name type expr)
      (bind-named-elt!
-       (ast:constant #'name (syntax->ast #'type) (syntax->ast #'expr)))]
+       (ast:constant stx #'name (syntax->ast #'type) (syntax->ast #'expr)))]
 
     [(assignment target expr)
-     (ast:assignment (syntax->ast #'target) (syntax->ast #'expr))]
+     (ast:assignment stx (syntax->ast #'target) (syntax->ast #'expr))]
 
     [(name-expr name)
-     (ast:name-expr (add-scope #'name))]
+     (ast:name-expr stx (add-scope #'name))]
+
+    [(field-expr expr name)
+     (ast:field-expr stx (syntax->ast #'expr) #'name)]
 
     [(indexed-expr expr index ...)
-     (ast:indexed-expr (syntax->ast #'expr) (map syntax->ast (attribute index)))]
+     (ast:indexed-expr stx (syntax->ast #'expr) (map syntax->ast (attribute index)))]
 
     [(literal-expr value)
-     (ast:literal-expr (syntax->datum #'value))]))
+     (ast:literal-expr stx (syntax->datum #'value))]))
+
+; TODO
+(define (ast->syntax ast)
+  #'(void))
+
+; TODO
+(define (ast->proc ast)
+  #'(define (#%silicate-make-ast)
+      (void)))

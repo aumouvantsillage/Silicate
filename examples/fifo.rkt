@@ -1,8 +1,7 @@
 #lang racket
 
 (require
-    silicate/signal
-    silicate/std
+    silicate
     silicate/context-wrapper
     silicate/compiler)
 

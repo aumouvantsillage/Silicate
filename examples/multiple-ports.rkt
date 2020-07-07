@@ -1,8 +1,7 @@
 #lang racket
 
-(require "../src/signal.rkt")
-(require "../src/component.rkt")
-(require "../src/std.rkt")
+(require silicate)
+(require silicate/lib/component)
 
 ; Access to a vector port where the index is a number
 

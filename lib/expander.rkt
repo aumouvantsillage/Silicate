@@ -2,6 +2,7 @@
 
 (require
   syntax/parse/define
+  "signal.rkt"
   (for-syntax
     racket
     racket/syntax
@@ -17,6 +18,7 @@
   name-expr
   field-expr
   indexed-expr
+  literal-expr
   signal-expr)
 
 ; Expand a Silicate syntax object after typechecking.
@@ -130,9 +132,13 @@
 ; An indexed expression expands to a chain of vector accesses.
 (define-syntax-parser indexed-expr
   [(indexed-expr expr index ... last)
-   #'(vector-ref (indexed-expr index ...) last)]
+   #'(vector-ref (indexed-expr expr index ...) last)]
   [(indexed-expr expr)
    #'expr])
+
+; Expand a literal expression to its value.
+(define-simple-macro (literal-expr value)
+  value)
 
 ; A signal expression is a wrapper element added by the typechecker
 ; to identify an expression that refers to a port or local signal
@@ -142,5 +148,5 @@
   [(signal-expr expr)
    #'(signal-proxy (unbox expr))]
   ; Dynamic case: expr contains indices that depend on signals s ...
-  [(signal-expr expr (s ...))
-   #'((lift (λ (s ...) (signal-first (signal-expr expr)))) s ...)])
+  [(signal-expr expr s ...)
+   #'(signal-proxy ((lift (λ (s ...) (signal-first (unbox expr)))) (unbox s) ...))])

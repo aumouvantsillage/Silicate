@@ -7,6 +7,6 @@
     [typecheck (-> ast:node? ast:node?)]))
 
 ; TODO (field-expr expr name) -> (field-expr expr name type)
-
+; TODO signal access expr     -> (signal-expr ...)
 (define (typecheck ast)
   ast)

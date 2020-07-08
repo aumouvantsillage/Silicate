@@ -10,20 +10,23 @@
 
 module: (interface | component)*
 
-interface: /"interface" ID interface-item-list
+interface: /"interface" ID parameter-list? interface-item* /"end"
 
-component: /"component" ID interface-item-list statement-list /"end"
+component: /"component" ID parameter-list? component-item* /"end"
 
-/interface-item-list: /"(" interface-item (/"," interface-item)* /","? /")"
+@parameter-list: /"(" (parameter /",")* parameter? /")"
 
 @interface-item:
-  parameter |
   data-port |
   composite-port |
   inline-composite-port |
   constant
 
-parameter: ID /":" /"param" ("type" | type-expression)
+@component-item:
+  interface-item |
+  statement
+
+parameter: ID /":" ("type" | type-expression)
 
 constant: ID /":" /"const" type-expression /"=" expression
 
@@ -36,9 +39,7 @@ inline-composite-port: /"::" ("use" | "flip") ID argument-list?
 multiplicity: /"[" expression /"]"
 
 ; TODO named arguments
-@argument-list: /"(" expression-list? /")"
-
-/statement-list: statement*
+@argument-list: /"(" (expression /",")* expression? /")"
 
 ; TODO other statements
 @statement:
@@ -62,11 +63,9 @@ name-expr: ID
 
 field-expr: simple-expr /"." ID
 
-indexed-expr: simple-expr /"[" expression-list /"]"
+indexed-expr: simple-expr /"[" expression ("," expression)* ","? /"]"
 
 literal-expr: INT
 
-@expression-list: expression ("," expression)* ","?
-
 ; TODO type parameters
-@type-expression: name
+@type-expression: name-expr

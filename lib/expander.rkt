@@ -4,9 +4,10 @@
   syntax/parse/define
   "signal.rkt"
   (for-syntax
-    racket
+    (only-in racket empty identity in-syntax)
     racket/syntax
-    syntax/parse/define))
+    syntax/parse/define
+    "syntax-classes.rkt"))
 
 (provide
   module
@@ -46,9 +47,9 @@
   ; The body is composed of parse options and clauses supported by syntax-parse.
   ; Elements that do not match any syntax pattern are filtered out.
   (define-simple-macro (define/map-syntax name body ...)
-    (define (name stx-lst)
+    (define (name lst)
       (filter identity
-        (for/list ([i (in-syntax stx-lst)])
+        (for/list ([i (in-list (or lst empty))])
           (syntax-parse i
             body ... [_ #f])))))
 
@@ -73,45 +74,46 @@
 
 ; Generate a struct type and a constructor function from an interface.
 (define-syntax-parser interface
-  [(interface name io-lst)
+  [:interface
    #:with ctor-name        (channel-ctor-name #'name)
-   #:with (field-name ...) (port-names #'io-lst)
-   #:with (param-name ...) (parameter-names #'io-lst)
-   #:with (port ...)       (ports #'io-lst)
-   #`(begin
+   #:with (param-name ...) (parameter-names (attribute param))
+   #:with (field-name ...) (port-names (attribute body))
+   #:with (port ...)       (ports (attribute body))
+   #'(begin
        (struct name (field-name ...))
        (define (ctor-name param-name ...)
          (name port ...)))])
+
+; From a component, generate the same output as for an interface,
+; and a function with the body of the component.
+(define-syntax-parser component
+  [:component
+   #:with inst-ctor-name   (instance-ctor-name #'name)
+   #:with chan-ctor-name   (channel-ctor-name  #'name)
+   #:with (param-name ...) (parameter-names (attribute param))
+   #`(begin
+       (interface name param ... body ...)
+       (define (inst-ctor-name param-name ...)
+         (define chan (chan-ctor-name param-name ...))
+         #,@(for/list ([i (in-list (port-names (attribute body)))])
+              (define acc (accessor-name #'name i))
+              #`(define #,i (#,acc chan)))
+         body ...
+         chan))])
 
 ; Data port initialization in a channel constructor.
 (define-simple-macro (data-port _ ...)
   (box #f))
 
 ; Composite port initialization in a channel constructor.
-(define-simple-macro (composite-port _ (~optional (multiplicity mult)) _ type arg ...)
+(define-syntax-parser composite-port
+  [:composite-port
    #:with m (or (attribute mult) #'1)
    #:with type-ctor-name (channel-ctor-name #'type)
-   (let ([ctor (λ (z) (type-ctor-name arg ...))])
-     (if (> m 1)
-       (build-vector m ctor)
-       (ctor #f))))
-
-; From a component, generate the same output as for an interface,
-; and a function with the body of the component.
-(define-syntax-parser component
-  [(component name io-lst body ...)
-   #:with inst-ctor-name   (instance-ctor-name #'name)
-   #:with chan-ctor-name   (channel-ctor-name  #'name)
-   #:with (param-name ...) (parameter-names #'io-lst)
-   #`(begin
-       (interface name io-lst)
-       (define (inst-ctor-name param-name ...)
-         (define chan (chan-ctor-name param-name ...))
-         #,@(for/list ([i (in-list (port-names #'io-lst))])
-              (define acc (accessor-name #'name i))
-              #`(define #,i (#,acc chan)))
-         body ...
-         chan))])
+   #'(let ([ctor (λ (z) (type-ctor-name arg ...))])
+       (if (> m 1)
+         (build-vector m ctor)
+         (ctor #f)))])
 
 ; An assignment fills the target port's box with the signal
 ; from the right-hand side.
@@ -126,7 +128,7 @@
 ; of the interface or record type where the field is declared.
 ; A field expression expands to a field access in a struct instance.
 (define-syntax-parser field-expr
-  [(field-expr expr name type)
+  [:field-expr
    #:with acc (accessor-name #'type #'name)
    #'(acc expr)])
 

@@ -12,10 +12,10 @@
 (struct named-elt node (name))
 
 ; An interface is a named element with a list of I/O declarations.
-(struct interface named-elt (io))
+(struct interface named-elt (params body))
 
 ; A component combines in interface with a list of statements.
-(struct component interface (body))
+(struct component interface ())
 
 ; A data port is a named element with a mode (input, output) and a data type.
 (struct data-port named-elt (mode type))

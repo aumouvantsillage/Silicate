@@ -2,6 +2,7 @@
 
 (require
   syntax/parse
+  "syntax-classes.rkt"
   (prefix-in ast: "ast.rkt")
   "scope.rkt")
 
@@ -16,66 +17,64 @@
 
 (define (syntax->ast stx)
   (syntax-parse stx
-    #:datum-literals [begin-silicate module interface component
-                      data-port composite-port inline-composite-port
-                      multiplicity in out use flip
-                      assign
-                      name-exp index-exp]
+    #:datum-literals [begin-silicate]
     [(begin-silicate mod)
      (syntax->ast #'mod)]
 
-    [(module body ...)
+    [:module
      (with-scope
        (ast:module stx (map syntax->ast (attribute body))))]
 
-    [(interface name (io ...))
+    [:interface
      (bind-named-elt!
        (with-scope
-         (ast:interface stx #'name (map syntax->ast (attribute io)))))]
+         (ast:interface stx #'name
+           (map syntax->ast (attribute param))
+           (map syntax->ast (attribute body)))))]
 
-    [(component name (io ...) body ...)
+    [:component
      (bind-named-elt!
        (with-scope
-         (ast:component stx #'name (map syntax->ast (attribute io))
-           (with-scope
-             (map syntax->ast (attribute body))))))]
+         (ast:component stx #'name
+           (map syntax->ast (attribute param))
+           (map syntax->ast (attribute body)))))]
 
-    [(data-port name mode type)
+    [:parameter
+     (bind-named-elt!
+       (ast:parameter stx #'name (syntax->ast #'type)))]
+
+    [:data-port
      (bind-named-elt!
        (ast:data-port stx #'name (syntax->datum #'mode) (syntax->ast #'type)))]
 
-    [(composite-port name (~optional (multiplicity mult)) mode type arg ...)
+    [:composite-port
      (define m (attribute mult))
      (bind-named-elt!
        (ast:composite-port stx #'name (syntax->datum #'mode)
          (and m (syntax->ast m)) (add-scope #'type)
          (map syntax->ast (attribute arg))))]
 
-    [(inline-composite-port mode type arg ...)
+    [:inline-composite-port
      (ast:inline-composite-port stx (syntax->datum #'mode)
        (add-scope #'type) (map syntax->ast (attribute arg)))]
 
-    [(parameter name type)
-     (bind-named-elt!
-       (ast:parameter stx #'name (syntax->ast #'type)))]
-
-    [(constant name type expr)
+    [:constant
      (bind-named-elt!
        (ast:constant stx #'name (syntax->ast #'type) (syntax->ast #'expr)))]
 
-    [(assignment target expr)
+    [:assignment
      (ast:assignment stx (syntax->ast #'target) (syntax->ast #'expr))]
 
-    [(name-expr name)
+    [:name-expr
      (ast:name-expr stx (add-scope #'name))]
 
-    [(field-expr expr name)
+    [:field-expr
      (ast:field-expr stx (syntax->ast #'expr) #'name)]
 
-    [(indexed-expr expr index ...)
+    [:indexed-expr
      (ast:indexed-expr stx (syntax->ast #'expr) (map syntax->ast (attribute index)))]
 
-    [(literal-expr value)
+    [:literal-expr
      (ast:literal-expr stx (syntax->datum #'value))]))
 
 ; TODO

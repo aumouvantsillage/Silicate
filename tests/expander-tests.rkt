@@ -9,18 +9,20 @@
 (define expander-tests
   (test-suite "Expander"
     (test-case "Interface with data ports is mapped to channel struct"
-      (interface I ([parameter N #f]
-                    [data-port a in  #f]
-                    [data-port b out #f]))
+      (interface I
+        (parameter N #f)
+        (data-port a in  #f)
+        (data-port b out #f))
 
       (define i (I 10 20))
       (check-eq? (I-a i) 10)
       (check-eq? (I-b i) 20))
 
     (test-case "Component with data ports is mapped to channel struct"
-      (component I ([parameter N #f]
-                    [data-port a in  #f]
-                    [data-port b out #f])
+      (component I
+        (parameter N #f)
+        (data-port a in  #f)
+        (data-port b out #f)
         (assignment (name-expr b) (signal-expr (name-expr a))))
 
       (define i (I 10 20))
@@ -28,11 +30,13 @@
       (check-eq? (I-b i) 20))
 
     (test-case "Interface with composite ports is mapped to channel struct"
-      (interface I ([parameter N #f]
-                    [data-port a in  #f]
-                    [data-port b out #f]))
-      (interface J ([data-port c in  #f]
-                    [composite-port d use I]))
+      (interface I
+        (parameter N #f)
+        (data-port a in  #f)
+        (data-port b out #f))
+      (interface J
+        (data-port c in  #f)
+        (composite-port d use I))
 
       (define j (J 10 (I 20 30)))
       (check-eq? (J-c j) 10)
@@ -40,11 +44,13 @@
       (check-eq? (I-b (J-d j)) 30))
 
     (test-case "Component with composite ports is mapped to channel struct"
-      (interface I ([parameter N #f]
-                    [data-port a in  #f]
-                    [data-port b out #f]))
-      (component J ([data-port c in  #f]
-                    [composite-port d use I])
+      (interface I
+        (parameter N #f)
+        (data-port a in  #f)
+        (data-port b out #f))
+      (component J
+        (data-port c in  #f)
+        (composite-port d use I)
         (assignment (field-expr (name-expr d) b I) (signal-expr (field-expr (name-expr d) a I))))
 
       (define j (J 10 (I 20 30)))
@@ -53,18 +59,20 @@
       (check-eq? (I-b (J-d j)) 30))
 
     (test-case "Can construct a channel for an interface with simple ports"
-      (interface I ([parameter N #f]
-                    [data-port a in  #f]
-                    [data-port b out #f]))
+      (interface I
+        (parameter N #f)
+        (data-port a in  #f)
+        (data-port b out #f))
 
       (define i (make-channel-I 30))
       (check-pred box? (I-a i))
       (check-pred box? (I-b i)))
 
     (test-case "Can construct a channel for a component with simple ports"
-      (component I ([parameter N #f]
-                    [data-port a in  #f]
-                    [data-port b out #f])
+      (component I
+        (parameter N #f)
+        (data-port a in  #f)
+        (data-port b out #f)
         (assignment (name-expr b) (signal-expr (name-expr a))))
 
       (define i (make-instance-I 30))
@@ -72,14 +80,17 @@
       (check-pred box? (I-b i)))
 
     (test-case "Can construct a channel for an interface with composite ports and no parameters"
-      (interface I ([data-port a in  #f]
-                    [data-port b out #f]))
-      (interface J ([data-port c in  #f]
-                    [composite-port d use I]
-                    [data-port e out #f]))
-      (interface K ([data-port f in  #f]
-                    [composite-port g use J]
-                    [data-port h out #f]))
+      (interface I
+        (data-port a in  #f)
+        (data-port b out #f))
+      (interface J
+        (data-port c in  #f)
+        (composite-port d use I)
+        (data-port e out #f))
+      (interface K
+        (data-port f in  #f)
+        (composite-port g use J)
+        (data-port h out #f))
 
       (define j (make-channel-J))
       (check-pred box? (J-c j))
@@ -98,14 +109,17 @@
       (check-pred box? (K-h k)))
 
     (test-case "Can construct a channel for a component with composite ports and no parameters"
-      (interface I ([data-port a in  #f]
-                    [data-port b out #f]))
-      (interface J ([data-port c in  #f]
-                    [composite-port d use I]
-                    [data-port e out #f]))
-      (component K ([data-port f in  #f]
-                    [composite-port g use J]
-                    [data-port h out #f])
+      (interface I
+        (data-port a in  #f)
+        (data-port b out #f))
+      (interface J
+        (data-port c in  #f)
+        (composite-port d use I)
+        (data-port e out #f))
+      (component K
+        (data-port f in  #f)
+        (composite-port g use J)
+        (data-port h out #f)
         (assignment (name-expr h) (signal-expr (name-expr f))))
 
       (define k (make-instance-K))
@@ -118,9 +132,11 @@
       (check-pred box? (K-h k)))
 
     (test-case "Can construct a channel for an interface with a vector port"
-      (interface I ([data-port a in  #f]
-                    [data-port b out #f]))
-      (interface J ([composite-port c (multiplicity 3) use I]))
+      (interface I
+        (data-port a in  #f)
+        (data-port b out #f))
+      (interface J
+        (composite-port c (multiplicity 3) use I))
 
       (define j (make-channel-J))
       (check-pred vector? (J-c j))
@@ -129,10 +145,12 @@
         (check-pred I? (vector-ref (J-c j) i))))
 
     (test-case "Can construct a channel for an interface with arguments"
-      (interface I ([data-port a in  integer]
-                    [data-port b out integer]))
-      (interface J ([parameter N integer]
-                    [composite-port c (multiplicity (name-expr N)) use I]))
+      (interface I
+        (data-port a in  integer)
+        (data-port b out integer))
+      (interface J
+        (parameter N integer)
+        (composite-port c (multiplicity (name-expr N)) use I))
 
       (define j (make-channel-J 3))
       (check-pred vector? (J-c j))
@@ -141,12 +159,15 @@
         (check-pred I? (vector-ref (J-c j) i))))
 
     (test-case "Can construct a channel containing a composite port with arguments"
-      (interface I ([data-port a in  integer]
-                    [data-port b out integer]))
-      (interface J ([parameter N integer]
-                    [composite-port c (multiplicity (name-expr N)) use I]))
-      (interface K ([parameter M integer]
-                    [composite-port d use J (name-expr M)]))
+      (interface I
+        (data-port a in  integer)
+        (data-port b out integer))
+      (interface J
+        (parameter N integer)
+        (composite-port c (multiplicity (name-expr N)) use I))
+      (interface K
+        (parameter M integer)
+        (composite-port d use J (name-expr M)))
 
       (define k (make-channel-K 3))
       (check-pred vector? (J-c (K-d k)))
@@ -155,8 +176,9 @@
         (check-pred I? (vector-ref (J-c (K-d k)) i))))
 
     (test-case "Can assign a simple port to another simple port"
-      (component C ([data-port a in #f]
-                    [data-port b out #f])
+      (component C
+        (data-port a in #f)
+        (data-port b out #f)
         (assignment (name-expr b) (signal-expr (name-expr a))))
 
       (define c (make-instance-C))
@@ -167,9 +189,11 @@
       (check-equal? (signal-take c-b 5) (signal-take c-a 5)))
 
     (test-case "Can access simple ports in a composite port"
-      (interface I ([data-port a in  #f]
-                    [data-port b out #f]))
-      (component J ([composite-port c use I])
+      (interface I
+        (data-port a in  #f)
+        (data-port b out #f))
+      (component J
+        (composite-port c use I)
         (assignment (field-expr (name-expr c) b I)
                     (signal-expr (field-expr (name-expr c) a I))))
 
@@ -181,9 +205,11 @@
       (check-equal? (signal-take j-c-b 5) (signal-take j-c-a 5)))
 
     (test-case "Can access simple ports in a vector composite port with static indices"
-      (interface I ([data-port a in  #f]
-                    [data-port b out #f]))
-      (component J ([composite-port c (multiplicity 3) use I])
+      (interface I
+        (data-port a in  #f)
+        (data-port b out #f))
+      (component J
+        (composite-port c (multiplicity 3) use I)
         (assignment (field-expr (indexed-expr (name-expr c) (literal-expr 0)) b I)
                     (signal-expr (field-expr (indexed-expr (name-expr c) (literal-expr 0)) a I)))
         (assignment (field-expr (indexed-expr (name-expr c) (literal-expr 1)) b I)
@@ -207,10 +233,12 @@
       (check-equal? (signal-take j-c-2-b 5) (signal-take j-c-2-a 5)))
 
     (test-case "Can access simple ports in a vector composite port with dynamic indices"
-      (interface I ([data-port a in  #f]))
-      (component J ([composite-port b (multiplicity 3) use I]
-                    [data-port c in #f]
-                    [data-port d out #f])
+      (interface I
+        (data-port a in  #f))
+      (component J
+        (composite-port b (multiplicity 3) use I)
+        (data-port c in #f)
+        (data-port d out #f)
         (assignment (name-expr d)
                     (lift-expr [c^ (signal-expr (name-expr c))]
                                (signal-expr (field-expr (indexed-expr (name-expr b) c^) a I)))))
@@ -231,9 +259,10 @@
       (check-equal? (signal-take j-d (length j-d-lst)) j-d-lst))
 
     (test-case "Can perform an operation between signals"
-      (component C ([data-port a in #f]
-                    [data-port b in #f]
-                    [data-port c out #f])
+      (component C
+        (data-port a in #f)
+        (data-port b in #f)
+        (data-port c out #f)
         (assignment (name-expr c)
                     (lift-expr [a^ (signal-expr (name-expr a))]
                                [b^ (signal-expr (name-expr b))]

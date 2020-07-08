@@ -146,10 +146,10 @@
 
     (test-case "Can construct a channel for an interface with arguments"
       (interface I
-        (data-port a in  integer)
-        (data-port b out integer))
+        (data-port a in  #f)
+        (data-port b out #f))
       (interface J
-        (parameter N integer)
+        (parameter N #f)
         (composite-port c (multiplicity (name-expr N)) use I))
 
       (define j (make-channel-J 3))
@@ -160,13 +160,13 @@
 
     (test-case "Can construct a channel containing a composite port with arguments"
       (interface I
-        (data-port a in  integer)
-        (data-port b out integer))
+        (data-port a in  #f)
+        (data-port b out #f))
       (interface J
-        (parameter N integer)
+        (parameter N #f)
         (composite-port c (multiplicity (name-expr N)) use I))
       (interface K
-        (parameter M integer)
+        (parameter M #f)
         (composite-port d use J (name-expr M)))
 
       (define k (make-channel-K 3))

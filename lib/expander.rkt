@@ -19,7 +19,8 @@
   field-expr
   indexed-expr
   literal-expr
-  signal-expr)
+  signal-expr
+  lift-expr)
 
 ; Expand a Silicate syntax object after typechecking.
 ;
@@ -143,10 +144,20 @@
 ; A signal expression is a wrapper element added by the typechecker
 ; to identify an expression that refers to a port or local signal
 ; for reading.
-(define-syntax-parser signal-expr
-  ; Static case: expr does not depend on other signals.
-  [(signal-expr expr)
-   #'(signal-proxy (unbox expr))]
-  ; Dynamic case: expr contains indices that depend on signals s ...
-  [(signal-expr expr s ...)
-   #'(signal-proxy ((lift (λ (s ...) (signal-first (unbox expr)))) (unbox s) ...))])
+(define-simple-macro (signal-expr expr)
+  (signal-proxy (unbox expr)))
+
+; A lift expression is a wrapper element added by the typechecker
+; when an expression depends on some signal values.
+; name ... is a list of signal names that are needed to compute expr.
+(define-syntax-parser lift-expr
+  #:literals [signal-expr]
+  ; Lift a signal expression. Since the expression returns a signal,
+  ; we must lift signal-first to avoid created a signal of signals.
+  ; This is typically used when indexed-expr contain signals as indices.
+  [(lift-expr arg ...+ (signal-expr expr))
+   #'(lift-expr arg ... (signal-first (signal-expr expr)))]
+  ; Lift any expression that computes values from values.
+  ; expr must not contain elements of type signal-expr.
+  [(lift-expr (name sexpr) ...+ expr)
+   #'((lift (λ (name ...) expr)) sexpr ...)])

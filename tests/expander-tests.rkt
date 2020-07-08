@@ -155,8 +155,8 @@
         (check-pred I? (vector-ref (J-c (K-d k)) i))))
 
     (test-case "Can assign a simple port to another simple port"
-      (component C ([data-port a in (name integer)]
-                    [data-port b out (name integer)])
+      (component C ([data-port a in #f]
+                    [data-port b out #f])
         (assignment (name-expr b) (signal-expr (name-expr a))))
 
       (define c (make-instance-C))
@@ -212,7 +212,8 @@
                     [data-port c in #f]
                     [data-port d out #f])
         (assignment (name-expr d)
-                    (signal-expr (field-expr (indexed-expr (name-expr b) (name-expr c)) a I) c)))
+                    (lift-expr [c^ (signal-expr (name-expr c))]
+                               (signal-expr (field-expr (indexed-expr (name-expr b) c^) a I)))))
 
       (define j (make-instance-J))
       (define j-b-0-a (static 10))
@@ -227,4 +228,25 @@
 
       (define j-d-lst (list 10 20 30 20 10 30))
       (define j-d (unbox (J-d j)))
-      (check-equal? (signal-take j-d (length j-d-lst)) j-d-lst))))
+      (check-equal? (signal-take j-d (length j-d-lst)) j-d-lst))
+
+    (test-case "Can perform an operation between signals"
+      (component C ([data-port a in #f]
+                    [data-port b in #f]
+                    [data-port c out #f])
+        (assignment (name-expr c)
+                    (lift-expr [a^ (signal-expr (name-expr a))]
+                               [b^ (signal-expr (name-expr b))]
+                               (+ a^ b^))))
+
+      (define la (range 1  5  1))
+      (define lb (range 10 50 10))
+
+      (define c (make-instance-C))
+      (define c-a (list->signal la))
+      (define c-b (list->signal lb))
+      (set-box! (C-a c) c-a)
+      (set-box! (C-b c) c-b)
+
+      (define c-c (unbox (C-c c)))
+      (check-equal? (signal-take c-c (length la)) (map + la lb)))))

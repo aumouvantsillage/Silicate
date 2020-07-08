@@ -8,5 +8,7 @@
 
 ; TODO (field-expr expr name) -> (field-expr expr name type)
 ; TODO signal access expr     -> (signal-expr ...)
+; TODO lift-expr
+
 (define (typecheck ast)
   ast)

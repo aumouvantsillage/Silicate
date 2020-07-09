@@ -28,14 +28,14 @@
     [:interface
      (bind-named-elt!
        (with-scope
-         (ast:interface stx #'name
+         (ast:make-design-unit ast:interface stx #'name
            (map syntax->ast (attribute param))
            (map syntax->ast (attribute body)))))]
 
     [:component
      (bind-named-elt!
        (with-scope
-         (ast:component stx #'name
+         (ast:make-design-unit ast:component stx #'name
            (map syntax->ast (attribute param))
            (map syntax->ast (attribute body)))))]
 
@@ -69,7 +69,7 @@
      (ast:name-expr stx (add-scope #'name))]
 
     [:field-expr
-     (ast:field-expr stx (syntax->ast #'expr) #'name)]
+     (ast:field-expr stx (syntax->ast #'expr) #'name #f)]
 
     [:indexed-expr
      (ast:indexed-expr stx (syntax->ast #'expr) (map syntax->ast (attribute index)))]
@@ -77,11 +77,77 @@
     [:literal-expr
      (ast:literal-expr stx (syntax->datum #'value))]))
 
-; TODO
-(define (ast->syntax ast)
-  #'(void))
+(define (ast->syntax n)
+  (match n
+    [(ast:module stx body)
+     (quasisyntax/loc stx
+       (module #,(map ast->syntax body)))]
+
+    [(ast:component stx name params body _)
+     (quasisyntax/loc stx
+       (component #,name
+         #,@(map ast->syntax params)
+         #,@(map ast->syntax body)))]
+
+    [(ast:interface stx name params body _)
+     (quasisyntax/loc stx
+       (interface #,name
+         #,@(map ast->syntax params)
+         #,@(map ast->syntax body)))]
+
+    [(ast:data-port stx name mode type)
+     (quasisyntax/loc stx
+       (data-port #,name #,mode #,(ast->syntax type)))]
+
+    [(ast:composite-port stx name mode mult intf-name args)
+     (quasisyntax/loc stx
+       (composite-port #,name #,mode (multiplicity #,(ast->syntax mult)) intf-name #,(map ast->syntax args)))]
+
+    [(ast:parameter stx name type)
+     (quasisyntax/loc stx
+       (parameter #,name #,(ast->syntax type)))]
+
+    [(ast:constant stx name type expr)
+     (quasisyntax/loc stx
+       (constant #,name #,(ast->syntax type) #,(ast->syntax expr)))]
+
+    [(ast:assignment stx target expr)
+     (quasisyntax/loc stx
+       (assignment #,(ast->syntax target) #,(ast->syntax expr)))]
+
+    [(ast:name-expr stx name)
+     (quasisyntax/loc stx
+       (name-expr #,name))]
+
+    [(ast:field-expr stx expr field-name type-name)
+     (quasisyntax/loc stx
+       (field-expr #,(ast->syntax expr) #,field-name #,type-name))]
+
+    [(ast:indexed-expr stx expr indices)
+     (quasisyntax/loc stx
+       (indexed-expr #,(ast->syntax expr) #,@(map ast->syntax indices)))]
+
+    [(ast:literal-expr stx value)
+     (quasisyntax/loc stx
+       (literal-expr #,value))]
+
+    [(ast:signal-expr stx expr)
+     (quasisyntax/loc stx
+       (signal-expr #,(ast->syntax expr)))]
+
+    [(ast:lift-expr stx bindings expr)
+     (quasisyntax/loc stx
+       (lift-expr #,@(for/list ([(k v) (in-dict bindings)])
+                       (list k (ast->syntax v)))
+                  #,(ast->syntax expr)))]
+
+    ; Common case: return the syntax object associated with this ast node
+    [(ast:node stx) stx]
+
+    ; If n is not an AST node, return it directly.
+    [_ n]))
 
 ; TODO
-(define (ast->proc ast)
+(define (ast->proc n)
   #'(define (#%silicate-make-ast)
       (void)))

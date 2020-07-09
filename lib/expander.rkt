@@ -157,8 +157,8 @@
   ; Lift a signal expression. Since the expression returns a signal,
   ; we must lift signal-first to avoid created a signal of signals.
   ; This is typically used when indexed-expr contain signals as indices.
-  [(lift-expr arg ...+ (signal-expr expr))
-   #'(lift-expr arg ... (signal-first (signal-expr expr)))]
+  [(lift-expr binding ...+ (signal-expr expr))
+   #'(lift-expr binding ... (signal-first (signal-expr expr)))]
   ; Lift any expression that computes values from values.
   ; expr must not contain elements of type signal-expr.
   [(lift-expr (name sexpr) ...+ expr)

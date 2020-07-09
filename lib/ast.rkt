@@ -1,5 +1,7 @@
 #lang racket
 
+(require syntax/id-table)
+
 (provide (all-defined-out))
 
 ; A node has a reference to its original syntax object.
@@ -11,20 +13,31 @@
 ; A named element is a node with a name attribute.
 (struct named-elt node (name))
 
-; An interface is a named element with a list of I/O declarations.
-(struct interface named-elt (params body))
+; A design unit is a named element with a list of I/O declarations.
+(struct design-unit named-elt (params body local-scope))
 
-; A component combines in interface with a list of statements.
-(struct component interface ())
+(struct interface design-unit ())
+
+(struct component design-unit ())
+
+(define (make-local-scope lst [sc (make-immutable-free-id-table)])
+  (for/fold ([acc sc])
+            ([i (in-list lst)] #:when (named-elt? i))
+    (dict-set acc (named-elt-name i) i)))
+
+(define (make-design-unit ctor stx name params body)
+  (ctor stx name params body
+        (make-local-scope params (make-local-scope body))))
 
 ; A data port is a named element with a mode (input, output) and a data type.
 (struct data-port named-elt (mode type))
 
 ; A composite port is a named element with a mode (use, flip),
 ; an interface type and interface arguments.
-(struct composite-port named-elt (mode mult type args))
+(struct composite-port named-elt (mode mult intf-name args))
 
-(struct inline-composite-port node (mode type args))
+; An inline composite port has no name and no multiplicity.
+(struct inline-composite-port node (mode intf-name args))
 
 (struct parameter named-elt (type))
 
@@ -34,8 +47,18 @@
 
 (struct name-expr node (name))
 
-(struct field-expr node (expr field-name))
+(struct field-expr node (expr field-name type-name))
 
 (struct indexed-expr node (expr indices))
 
 (struct literal-expr node (value))
+
+; A signal expression wraps an expression whose result is a signal
+; accessed for reading.
+(struct signal-expr node (expr))
+
+; A lift expression converts an expression that operates on values
+; into an expression that operates on signals.
+; The bindings are a dictionary that associates names to
+; signal expressions used in expr.
+(struct lift-expr node (bindings expr))

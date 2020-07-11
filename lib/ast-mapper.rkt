@@ -125,6 +125,10 @@
        (quasisyntax/loc stx
          (assignment #,(ast->syntax target) #,(ast->syntax expr)))]
 
+      [(ast-literal-expr stx value)
+       (quasisyntax/loc stx
+         (literal-expr #,value))]
+
       [(ast-name-expr stx name)
        (quasisyntax/loc stx
          (name-expr #,name))]
@@ -137,9 +141,9 @@
        (quasisyntax/loc stx
          (indexed-expr #,(ast->syntax expr) #,@(map ast->syntax indices)))]
 
-      [(ast-literal-expr stx value)
+      [(ast-call-expr stx fn-name args)
        (quasisyntax/loc stx
-         (literal-expr #,value))]
+         (call-expr #,fn-name #,@(map ast->syntax args)))]
 
       [(ast-signal-expr stx expr)
        (quasisyntax/loc stx

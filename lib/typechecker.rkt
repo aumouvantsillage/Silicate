@@ -30,11 +30,14 @@
     [(ast-assignment stx target expr)
      (typecheck-assignment stx (typecheck target) (typecheck expr))]
 
-    [(ast-field-expr stx expr name _)
-     (typecheck-field-expr stx (typecheck expr) (typecheck name))]
+    [(ast-field-expr stx expr field-name _)
+     (typecheck-field-expr stx (typecheck expr) (typecheck field-name))]
 
     [(ast-indexed-expr stx expr indices)
      (typecheck-indexed-expr stx (typecheck expr) (map typecheck indices))]
+
+    [(ast-call-expr stx fn-name args)
+     (typecheck-call-expr stx fn-name (map typecheck args))]
 
     [_ n]))
 
@@ -46,12 +49,16 @@
   (unless (and (ast-data-port? p) (eq? (ast-data-port-mode p) 'out))
     (raise-syntax-error #f "Invalid assignment target" target))
 
+  ; If the source expression depends on signals, lift it.
+  (define expr^ (lift-if-needed expr))
+
   (ast-assignment stx target
     ; If the expression refers to a data port, wrap it in a signal-expr.
     ; TODO support local signals.
-    (if (ast-data-port? (ast-resolve expr))
-      (ast-signal-expr (ast-node-stx expr) expr)
-      expr)))
+    ; TODO wrap constants in static
+    (if (ast-data-port? (ast-resolve expr^))
+      (ast-signal-expr (ast-node-stx expr^) expr^)
+      expr^)))
 
 (define (typecheck-field-expr stx expr name)
   (match (ast-resolve expr)
@@ -69,3 +76,39 @@
   (unless (ast-composite-port? (ast-resolve expr))
     (raise-syntax-error #f "Expression not suitable for indexing" stx))
   (ast-indexed-expr stx expr indices))
+
+(define (typecheck-call-expr stx fn-name args)
+  ; TODO check that fn-name is bound or built-in
+  ; TODO typecheck arguments against fn
+  (ast-call-expr stx fn-name args))
+
+(define (lift-if-needed n)
+  (match n
+    [(ast-call-expr stx fn-name args)
+     (for/foldr ([b-lst empty] ; The list of bindings for the new lift-expr
+                 [a-lst empty] ; The list of arguments for the new call-expr
+                 ; If there are no bindings, return the original call-expr,
+                 ; else, make a new call-expr wrapped in a lift-expr.
+                 #:result (if (empty? b-lst) n (ast-lift-expr stx b-lst (ast-call-expr stx fn-name a-lst))))
+                 ; Lift each argument if needed before proceeding.
+                ([a (in-list (map lift-if-needed args))])
+       (match a
+         ; If the current argument is already lifted,
+         ; accumulate its bindings and unwrap its expression.
+         [(ast-lift-expr _ bindings expr)
+          (values (append bindings b-lst) (cons expr a-lst))]
+         ; If the argument resolves to a signal,
+         ; create a binding and replace it with a name-expr.
+         ; TODO support local signals.
+         [(ast-node stx) #:when (ast-data-port? (ast-resolve a))
+          (define bname (gensym "lift"))
+          (define new-binding (cons bname (ast-signal-expr stx a)))
+          (define new-arg (ast-name-expr stx bname))
+          (values (cons new-binding b-lst) (cons new-arg a-lst))]
+         ; In the other cases, keep the current list of bindings
+         ; and the current argument.
+         [_ (values b-lst a)]))]
+
+    ; TODO lift indexed-expr with signal as index
+    
+    [_ n]))

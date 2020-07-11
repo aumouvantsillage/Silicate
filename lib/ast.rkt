@@ -51,23 +51,25 @@
 
 (struct assignment node (target expr))
 
+(struct literal-expr node (value))
+
 (struct name-expr node (name))
 
 (struct field-expr node (expr field-name type-name))
 
 (struct indexed-expr node (expr indices))
 
-(struct literal-expr node (value))
+(struct call-expr node (fn-name args))
 
 (define (resolve n)
   (match n
     [(name-expr _ name)
      (lookup name)]
 
-    [(field-expr _ expr name _)
+    [(field-expr _ expr field-name _)
      (match (resolve expr)
        [(composite-port _ _ _ _ intf-name _)
-        (design-unit-lookin (lookup intf-name interface?) name)]
+        (design-unit-lookin (lookup intf-name interface?) field-name)]
        [_ (raise-syntax-error #f "Expression not suitable for field access" (node-stx n))])]
 
     [(indexed-expr _ expr _)

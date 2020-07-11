@@ -16,10 +16,11 @@
   composite-port
   component
   assignment
+  literal-expr
   name-expr
   field-expr
   indexed-expr
-  literal-expr
+  call-expr
   signal-expr
   lift-expr)
 
@@ -109,8 +110,8 @@
 (define-syntax-parser composite-port
   [:composite-port
    #:with m (or (attribute mult) #'1)
-   #:with type-ctor-name (channel-ctor-name #'type)
-   #'(let ([ctor (λ (z) (type-ctor-name arg ...))])
+   #:with chan-ctor-name (channel-ctor-name #'intf-name)
+   #'(let ([ctor (λ (z) (chan-ctor-name arg ...))])
        (if (> m 1)
          (build-vector m ctor)
          (ctor #f)))])
@@ -119,6 +120,10 @@
 ; from the right-hand side.
 (define-simple-macro (assignment target expr)
   (set-box! target expr))
+
+; Expand a literal expression to its value.
+(define-simple-macro (literal-expr value)
+  value)
 
 ; A name expression refers to a variable in the current scope.
 (define-simple-macro (name-expr name)
@@ -129,7 +134,7 @@
 ; A field expression expands to a field access in a struct instance.
 (define-syntax-parser field-expr
   [:field-expr
-   #:with acc (accessor-name #'type #'name)
+   #:with acc (accessor-name #'type-name #'field-name)
    #'(acc expr)])
 
 ; An indexed expression expands to a chain of vector accesses.
@@ -139,9 +144,8 @@
   [(indexed-expr expr)
    #'expr])
 
-; Expand a literal expression to its value.
-(define-simple-macro (literal-expr value)
-  value)
+(define-simple-macro (call-expr fn-name arg ...)
+  (fn-name arg ...))
 
 ; A signal expression is a wrapper element added by the typechecker
 ; to identify an expression that refers to a port or local signal

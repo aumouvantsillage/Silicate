@@ -48,24 +48,58 @@ multiplicity: /"[" expression /"]"
 assignment:
   expression /"=" expression
 
+; Expressions ------------------------------------------------------------------
+
 ; TODO other expressions
 @expression:
+  or-expr
+  and-expr
+  rel-expr
+  add-expr
+  mult-expr
+  prefix-expr
   simple-expr
 
+or-expr:
+  (or-expr | and-expr) "or" and-expr
+
+and-expr:
+  (and-expr | rel-expr) "and" rel-expr
+
+rel-expr:
+  (rel-expr | add-expr) ("<" | ">" | "<=" | ">=" | "==" | "/=") add-expr
+
+add-expr:
+  (add-expr | mult-expr) ("+" | "-") mult-expr
+
+mult-expr:
+  (mult-expr | prefix-expr) ("*" | "/") prefix-expr
+
+prefix-expr:
+  ("-" | "not") simple-expr
+
 @simple-expr:
+  literal-expr |
   name-expr |
   field-expr |
   indexed-expr |
-  literal-expr |
+  call-expr |
   /"(" expression /")"
+
+literal-expr: INT
 
 name-expr: ID
 
-field-expr: simple-expr /"." ID
+field-expr:
+  simple-expr /"." ID
 
-indexed-expr: simple-expr /"[" expression ("," expression)* ","? /"]"
+indexed-expr:
+  simple-expr /"[" expression ("," expression)* ","? /"]"
 
-literal-expr: INT
+call-expr:
+  ID /"(" (expression /",")* expression? /")"
+
+; Type expressions -------------------------------------------------------------
 
 ; TODO type parameters
 @type-expression: name-expr

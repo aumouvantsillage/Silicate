@@ -266,7 +266,7 @@
         (assignment (name-expr c)
                     (lift-expr [a^ (signal-expr (name-expr a))]
                                [b^ (signal-expr (name-expr b))]
-                               (+ a^ b^))))
+                               (call-expr + a^ b^))))
 
       (define la (range 1  5  1))
       (define lb (range 10 50 10))

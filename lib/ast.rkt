@@ -1,11 +1,13 @@
 #lang racket
 
-(require syntax/id-table)
+(require
+  syntax/id-table
+  "scope.rkt")
 
 (provide (all-defined-out))
 
 ; A node has a reference to its original syntax object.
-(struct node (stx))
+(struct node (stx) #:transparent)
 
 ; A module is a node that contains design units.
 (struct module node (body))
@@ -28,6 +30,10 @@
 (define (make-design-unit ctor stx name params body)
   (ctor stx name params body
         (make-local-scope params (make-local-scope body))))
+
+(define (design-unit-lookin unit name)
+  (dict-ref (design-unit-local-scope unit) name
+    (λ () (raise-syntax-error #f "No element with this name" name))))
 
 ; A data port is a named element with a mode (input, output) and a data type.
 (struct data-port named-elt (mode type))
@@ -52,6 +58,22 @@
 (struct indexed-expr node (expr indices))
 
 (struct literal-expr node (value))
+
+(define (resolve n)
+  (match n
+    [(name-expr _ name)
+     (lookup name)]
+
+    [(field-expr _ expr name _)
+     (match (resolve expr)
+       [(composite-port _ _ _ _ intf-name _)
+        (design-unit-lookin (lookup intf-name interface?) name)]
+       [_ (raise-syntax-error #f "Expression not suitable for field access" (node-stx n))])]
+
+    [(indexed-expr _ expr _)
+     (resolve expr)]
+
+    [_ #f]))
 
 ; A signal expression wraps an expression whose result is a signal
 ; accessed for reading.

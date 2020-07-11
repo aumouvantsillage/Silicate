@@ -39,9 +39,11 @@
     [_ n]))
 
 (define (typecheck-assignment stx target expr)
-  ; The target expression must refer to a data port.
+  ; The target expression must refer to an output data port.
   ; TODO support other targets such as local signals.
-  (unless (ast-data-port? (ast-resolve target))
+  ; TODO check circular dependencies.
+  (define p (ast-resolve target))
+  (unless (and (ast-data-port? p) (eq? (ast-data-port-mode p) 'out))
     (raise-syntax-error #f "Invalid assignment target" target))
 
   (ast-assignment stx target

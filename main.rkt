@@ -18,7 +18,7 @@
 (define-syntax (begin-silicate stx)
   (define top (typecheck (syntax->ast stx)))
   (define rkt (ast->syntax top))
-  ; (displayln rkt)
+  ; (displayln (syntax->datum rkt))
   #`(begin
       #,(ast->proc top)
       #,rkt))

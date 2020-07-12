@@ -118,7 +118,7 @@
          (build-vector m ctor)
          (ctor #f)))])
 
-(define-simple-macro (constant name _ expr)
+(define-simple-macro (constant name expr)
   (define name expr))
 
 ; An assignment fills the target port's box with the signal

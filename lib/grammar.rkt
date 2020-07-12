@@ -28,13 +28,13 @@ component: /"component" ID parameter-list? component-item* /"end"
 
 parameter: ID /":" ("type" | type-expression)
 
-constant: ID /":" /"const" type-expression /"=" expression
+constant: /"const" ID /"=" expression
 
-data-port: ID /":" ("in" | "out") type-expression
+data-port: /"port" ID /":" ("in" | "out") type-expression
 
-composite-port: ID multiplicity? /":" ("use" | "flip") ID argument-list?
+composite-port: /"port" ID multiplicity? /":" "flip"? ID argument-list?
 
-inline-composite-port: /"::" ("use" | "flip") ID argument-list?
+inline-composite-port: /"import" "flip"? ID argument-list?
 
 multiplicity: /"[" expression /"]"
 

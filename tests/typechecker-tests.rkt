@@ -30,7 +30,7 @@
             (data-port a in  (name-expr integer))
             (data-port b out (name-expr integer)))
           (component J
-            (composite-port c use I)
+            (composite-port c I)
             (assignment (field-expr (name-expr c) b)
                         (field-expr (name-expr c) a)))))
 
@@ -48,7 +48,7 @@
             (data-port a in  (name-expr integer))
             (data-port b out (name-expr integer)))
           (component J
-            (composite-port i (multiplicity (literal-expr 2)) use I)
+            (composite-port i (multiplicity (literal-expr 2)) I)
             (assignment (field-expr (indexed-expr (name-expr i) (literal-expr 0)) b)
                         (field-expr (indexed-expr (name-expr i) (literal-expr 0)) a))
             (assignment (field-expr (indexed-expr (name-expr i) (literal-expr 1)) b)
@@ -72,9 +72,9 @@
             (data-port a in  (name-expr integer))
             (data-port b out (name-expr integer)))
           (interface J
-            (composite-port i (multiplicity (literal-expr 2)) use I))
+            (composite-port i (multiplicity (literal-expr 2)) I))
           (component K
-            (composite-port j (multiplicity (literal-expr 2)) use J)
+            (composite-port j (multiplicity (literal-expr 2)) J)
             (assignment (field-expr (indexed-expr (field-expr (indexed-expr (name-expr j) (literal-expr 0)) i) (literal-expr 0)) b)
                         (field-expr (indexed-expr (field-expr (indexed-expr (name-expr j) (literal-expr 0)) i) (literal-expr 0)) a))
             (assignment (field-expr (indexed-expr (field-expr (indexed-expr (name-expr j) (literal-expr 0)) i) (literal-expr 1)) b)
@@ -121,7 +121,7 @@
         (module
           (component C
             (data-port a out (name-expr integer))
-            (constant c (name-expr integer) (literal-expr 10))
+            (constant c (literal-expr 10))
             (assignment (name-expr a) (name-expr c)))))
 
       (define c (make-instance-C))
@@ -134,7 +134,7 @@
         (module
           (component C
             (data-port a out (name-expr integer))
-            (constant c (name-expr integer) (literal-expr 10))
+            (constant c (literal-expr 10))
             (assignment (name-expr a)
                         (call-expr + (name-expr c) (literal-expr 1))))))
 
@@ -169,7 +169,7 @@
           (interface I
             (data-port a in (name-expr integer)))
           (component J
-            (composite-port b (multiplicity (literal-expr 3)) use I)
+            (composite-port b (multiplicity (literal-expr 3)) I)
             (data-port c in (name-expr integer))
             (data-port d out (name-expr integer))
             (assignment (name-expr d)

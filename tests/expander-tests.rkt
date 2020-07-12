@@ -36,7 +36,7 @@
         (data-port b out #f))
       (interface J
         (data-port c in  #f)
-        (composite-port d use I))
+        (composite-port d I))
 
       (define j (J 10 (I 20 30)))
       (check-eq? (J-c j) 10)
@@ -50,7 +50,7 @@
         (data-port b out #f))
       (component J
         (data-port c in  #f)
-        (composite-port d use I)
+        (composite-port d I)
         (assignment (field-expr (name-expr d) b I) (signal-expr (field-expr (name-expr d) a I))))
 
       (define j (J 10 (I 20 30)))
@@ -85,11 +85,11 @@
         (data-port b out #f))
       (interface J
         (data-port c in  #f)
-        (composite-port d use I)
+        (composite-port d I)
         (data-port e out #f))
       (interface K
         (data-port f in  #f)
-        (composite-port g use J)
+        (composite-port g J)
         (data-port h out #f))
 
       (define j (make-channel-J))
@@ -114,11 +114,11 @@
         (data-port b out #f))
       (interface J
         (data-port c in  #f)
-        (composite-port d use I)
+        (composite-port d I)
         (data-port e out #f))
       (component K
         (data-port f in  #f)
-        (composite-port g use J)
+        (composite-port g J)
         (data-port h out #f)
         (assignment (name-expr h) (signal-expr (name-expr f))))
 
@@ -136,7 +136,7 @@
         (data-port a in  #f)
         (data-port b out #f))
       (interface J
-        (composite-port c (multiplicity 3) use I))
+        (composite-port c (multiplicity 3) I))
 
       (define j (make-channel-J))
       (check-pred vector? (J-c j))
@@ -150,7 +150,7 @@
         (data-port b out #f))
       (interface J
         (parameter N #f)
-        (composite-port c (multiplicity (name-expr N)) use I))
+        (composite-port c (multiplicity (name-expr N)) I))
 
       (define j (make-channel-J 3))
       (check-pred vector? (J-c j))
@@ -164,10 +164,10 @@
         (data-port b out #f))
       (interface J
         (parameter N #f)
-        (composite-port c (multiplicity (name-expr N)) use I))
+        (composite-port c (multiplicity (name-expr N)) I))
       (interface K
         (parameter M #f)
-        (composite-port d use J (name-expr M)))
+        (composite-port d J (name-expr M)))
 
       (define k (make-channel-K 3))
       (check-pred vector? (J-c (K-d k)))
@@ -193,7 +193,7 @@
         (data-port a in  #f)
         (data-port b out #f))
       (component J
-        (composite-port c use I)
+        (composite-port c I)
         (assignment (field-expr (name-expr c) b I)
                     (signal-expr (field-expr (name-expr c) a I))))
 
@@ -209,7 +209,7 @@
         (data-port a in  #f)
         (data-port b out #f))
       (component J
-        (composite-port c (multiplicity 3) use I)
+        (composite-port c (multiplicity 3) I)
         (assignment (field-expr (indexed-expr (name-expr c) (literal-expr 0)) b I)
                     (signal-expr (field-expr (indexed-expr (name-expr c) (literal-expr 0)) a I)))
         (assignment (field-expr (indexed-expr (name-expr c) (literal-expr 1)) b I)
@@ -236,7 +236,7 @@
       (interface I
         (data-port a in  #f))
       (component J
-        (composite-port b (multiplicity 3) use I)
+        (composite-port b (multiplicity 3) I)
         (data-port c in #f)
         (data-port d out #f)
         (assignment (name-expr d)

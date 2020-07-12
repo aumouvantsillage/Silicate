@@ -25,16 +25,16 @@
   (pattern (data-port name mode type)))
 
 (define-syntax-class composite-port
-  #:datum-literals [composite-port multiplicity]
-  (pattern (composite-port name (~optional (multiplicity mult)) mode intf-name arg ...)))
+  #:datum-literals [composite-port multiplicity flip]
+  (pattern (composite-port name (~optional (multiplicity mult)) (~optional flip?:flip) intf-name arg ...)))
 
 (define-syntax-class inline-composite-port
-  #:datum-literals [inline-composite-port]
-  (pattern (inline-composite-port mode intf-name arg ...)))
+  #:datum-literals [inline-composite-port flip]
+  (pattern (inline-composite-port (~optional flip?:flip) intf-name arg ...)))
 
 (define-syntax-class constant
   #:datum-literals [constant]
-  (pattern (constant name type expr)))
+  (pattern (constant name expr)))
 
 (define-syntax-class assignment
   #:datum-literals [assignment]

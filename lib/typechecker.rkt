@@ -9,6 +9,7 @@
     [typecheck (-> ast-node? ast-node?)]))
 
 (define (typecheck n)
+  ; TODO inline composite ports
   (match n
     [(ast-module stx body)
      (ast-module stx (map typecheck body))]
@@ -23,8 +24,8 @@
                            (map typecheck params)
                            (map typecheck body))]
 
-    [(ast-constant stx name type expr)
-     (typecheck-constant stx name (typecheck type) (typecheck expr))]
+    [(ast-constant stx name expr)
+     (typecheck-constant stx name (typecheck expr))]
 
     [(ast-assignment stx target expr)
      (typecheck-assignment stx (typecheck target) (typecheck expr))]
@@ -40,14 +41,16 @@
 
     [_ n]))
 
-(define (typecheck-constant stx name type expr)
+(define (typecheck-constant stx name expr)
   (unless (ast-static-value? expr)
     (raise-syntax-error #f "Non-static value cannot be assigned to constant" expr))
   ; TODO check expression type
-  (ast-constant stx name type expr))
+  (ast-constant stx name expr))
 
 (define (typecheck-assignment stx target expr)
   ; The target expression must refer to an output data port.
+  ; TODO support other port modes: out flip/in inst/in inst/flip/out local
+  ; TODO support assignment from composite to composite.
   ; TODO support other targets such as local signals.
   ; TODO check circular dependencies.
   (define p (ast-resolve target))

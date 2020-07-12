@@ -55,18 +55,20 @@
        (define m (attribute mult))
        (bind-named-elt!
          (ast-composite-port stx #'name
-           (syntax->datum #'mode)
+           (attribute flip?)
            (if m (syntax->ast m) (ast-literal-expr stx 1))
            (add-scope #'intf-name)
            (map syntax->ast (attribute arg))))]
 
       [:stx-inline-composite-port
-       (ast-inline-composite-port stx (syntax->datum #'mode)
-         (add-scope #'intf-name) (map syntax->ast (attribute arg)))]
+       (ast-inline-composite-port stx
+         (attribute flip?)
+         (add-scope #'intf-name)
+         (map syntax->ast (attribute arg)))]
 
       [:stx-constant
        (bind-named-elt!
-         (ast-constant stx #'name (syntax->ast #'type) (syntax->ast #'expr)))]
+         (ast-constant stx #'name (syntax->ast #'expr)))]
 
       [:stx-assignment
        (ast-assignment stx (syntax->ast #'target) (syntax->ast #'expr))]
@@ -109,17 +111,20 @@
        (quasisyntax/loc stx
          (data-port #,name #,mode #,(ast->syntax type)))]
 
-      [(ast-composite-port stx name mode mult intf-name args)
+      [(ast-composite-port stx name flip? mult intf-name args)
        (quasisyntax/loc stx
-         (composite-port #,name (multiplicity #,(ast->syntax mult)) #,mode #,intf-name #,@(map ast->syntax args)))]
+         (composite-port #,name
+           (multiplicity #,(ast->syntax mult))
+           #,@(if flip? (list #'flip) empty)
+           #,intf-name #,@(map ast->syntax args)))]
 
       [(ast-parameter stx name type)
        (quasisyntax/loc stx
          (parameter #,name #,(ast->syntax type)))]
 
-      [(ast-constant stx name type expr)
+      [(ast-constant stx name expr)
        (quasisyntax/loc stx
-         (constant #,name #,(ast->syntax type) #,(ast->syntax expr)))]
+         (constant #,name #,(ast->syntax expr)))]
 
       [(ast-assignment stx target expr)
        (quasisyntax/loc stx

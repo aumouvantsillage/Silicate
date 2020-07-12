@@ -38,16 +38,16 @@
 ; A data port is a named element with a mode (input, output) and a data type.
 (struct data-port named-elt (mode type))
 
-; A composite port is a named element with a mode (use, flip),
+; A composite port is a named element with
 ; an interface type and interface arguments.
-(struct composite-port named-elt (mode mult intf-name args))
+(struct composite-port named-elt (flip? mult intf-name args))
 
 ; An inline composite port has no name and no multiplicity.
-(struct inline-composite-port node (mode intf-name args))
+(struct inline-composite-port node (flip? intf-name args))
 
 (struct parameter named-elt (type))
 
-(struct constant named-elt (type expr))
+(struct constant named-elt (expr))
 
 (struct assignment node (target expr))
 

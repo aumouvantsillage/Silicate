@@ -161,4 +161,31 @@
       (set-box! (C-b c) c-b)
       (define c-c (unbox (C-c c)))
 
-      (check-equal? (signal-take c-c 5) (map + (signal-take c-a 5) (signal-take c-b 5))))))
+      (check-equal? (signal-take c-c 5) (map + (signal-take c-a 5) (signal-take c-b 5))))
+
+    (test-case "Can access simple ports in a vector composite port with dynamic indices"
+      (begin-silicate
+        (module
+          (interface I
+            (data-port a in (name-expr integer)))
+          (component J
+            (composite-port b (multiplicity (literal-expr 3)) use I)
+            (data-port c in (name-expr integer))
+            (data-port d out (name-expr integer))
+            (assignment (name-expr d)
+                        (field-expr (indexed-expr (name-expr b) (name-expr c)) a)))))
+
+      (define j (make-instance-J))
+      (define j-b-0-a (static 10))
+      (define j-b-1-a (static 20))
+      (define j-b-2-a (static 30))
+      (set-box! (I-a (vector-ref (J-b j) 0)) j-b-0-a)
+      (set-box! (I-a (vector-ref (J-b j) 1)) j-b-1-a)
+      (set-box! (I-a (vector-ref (J-b j) 2)) j-b-2-a)
+
+      (define j-c (list->signal (list 0 1 2 1 0 2)))
+      (set-box! (J-c j) j-c)
+
+      (define j-d-lst (list 10 20 30 20 10 30))
+      (define j-d (unbox (J-d j)))
+      (check-equal? (signal-take j-d (length j-d-lst)) j-d-lst))))

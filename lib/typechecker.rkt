@@ -58,13 +58,24 @@
   (define expr^ (lift-if-needed expr))
 
   (ast-assignment stx target
-    ; If the expression refers to a data port, wrap it in a signal-expr.
     ; TODO support local signals.
-    (cond [(ast-data-port? (ast-resolve expr^))
-           (ast-signal-expr (ast-node-stx expr^) expr^)]
-          [(ast-static-value? expr^)
-           (ast-static-expr (ast-node-stx expr^) expr^)]
-          [else expr^])))
+    (match expr^
+      ; If expr^ is a lift-expr that wraps a signal read,
+      ; wrap it also in a signal-expr.
+      [(ast-lift-expr stx^ bindings body)
+       (if (ast-data-port? (ast-resolve body))
+         (ast-lift-expr stx^ bindings (ast-signal-expr stx^ body))
+         expr^)]
+
+      ; If expr^ has a static value, wrap it in a static-expr.
+      [(? ast-static-value? (ast-node stx^))
+       (ast-static-expr stx^ expr^)]
+
+      ; If expr^ resolves to a signal, wrap it in a signal-expr.
+      [(ast-node stx^) #:when (ast-data-port? (ast-resolve expr^))
+       (ast-signal-expr stx^ expr^)]
+
+      [_ expr^])))
 
 (define (typecheck-field-expr stx expr name)
   (match (ast-resolve expr)
@@ -91,30 +102,39 @@
 (define (lift-if-needed n)
   (match n
     [(ast-call-expr stx fn-name args)
-     (for/foldr ([b-lst empty] ; The list of bindings for the new lift-expr
-                 [a-lst empty] ; The list of arguments for the new call-expr
-                 ; If there are no bindings, return the original call-expr,
-                 ; else, make a new call-expr wrapped in a lift-expr.
-                 #:result (if (empty? b-lst) n (ast-lift-expr stx b-lst (ast-call-expr stx fn-name a-lst))))
-                 ; Lift each argument if needed before proceeding.
-                ([a (in-list (map lift-if-needed args))])
-       (match a
-         ; If the current argument is already lifted,
-         ; accumulate its bindings and unwrap its expression.
-         [(ast-lift-expr _ bindings expr)
-          (values (append bindings b-lst) (cons expr a-lst))]
-         ; If the argument resolves to a signal,
-         ; create a binding and replace it with a name-expr.
-         ; TODO support local signals.
-         [(ast-node stx) #:when (ast-data-port? (ast-resolve a))
-          (define bname (gensym "lift"))
-          (define new-binding (cons bname (ast-signal-expr stx a)))
-          (define new-arg (ast-name-expr stx bname))
-          (values (cons new-binding b-lst) (cons new-arg a-lst))]
-         ; In the other cases, keep the current list of bindings
-         ; and the current argument.
-         [_ (values b-lst a)]))]
+     (lift-if-needed* n args (λ (lst) (ast-call-expr stx fn-name lst)))]
 
-    ; TODO lift indexed-expr with signal as index
+    [(ast-indexed-expr stx expr indices)
+     (lift-if-needed* n (cons expr indices) (λ (lst) (ast-indexed-expr stx (first lst) (rest lst))))]
+
+    [(ast-field-expr stx expr name type-name)
+     (lift-if-needed* n (list expr) (λ (lst) (ast-field-expr stx (first lst) name type-name)))]
 
     [_ n]))
+
+(define (lift-if-needed* n lst thunk)
+  (for/foldr ([b-lst empty] ; The list of bindings for the new lift-expr
+              [a-lst empty] ; The list of arguments for the new call-expr
+              ; If there are no bindings, return the original call-expr,
+              ; else, make a new call-expr wrapped in a lift-expr.
+              #:result (if (empty? b-lst)
+                         n
+                         (ast-lift-expr (ast-node-stx n) b-lst (thunk a-lst))))
+              ; Lift each argument if needed before proceeding.
+             ([a (in-list (map lift-if-needed lst))])
+    (match a
+      ; If the current argument is already lifted,
+      ; accumulate its bindings and unwrap its expression.
+      [(ast-lift-expr _ bindings expr)
+       (values (append bindings b-lst) (cons expr a-lst))]
+      ; If the argument resolves to a signal,
+      ; create a binding and replace it with a name-expr.
+      ; TODO support local signals.
+      [(ast-node stx) #:when (ast-data-port? (ast-resolve a))
+       (define bname (gensym "lift"))
+       (define new-binding (cons bname (ast-signal-expr stx a)))
+       (define new-arg (ast-name-expr stx bname))
+       (values (cons new-binding b-lst) (cons new-arg a-lst))]
+      ; In the other cases, keep the current list of bindings
+      ; and the current argument.
+      [_ (values b-lst (cons a a-lst))])))

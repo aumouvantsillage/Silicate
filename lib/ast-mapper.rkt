@@ -149,6 +149,10 @@
        (quasisyntax/loc stx
          (signal-expr #,(ast->syntax expr)))]
 
+      [(ast-static-expr stx expr)
+       (quasisyntax/loc stx
+         (static-expr #,(ast->syntax expr)))]
+
       [(ast-lift-expr stx bindings expr)
        (quasisyntax/loc stx
          (lift-expr #,@(for/list ([(k v) (in-dict bindings)])

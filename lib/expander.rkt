@@ -14,6 +14,7 @@
   interface
   data-port
   composite-port
+  constant
   component
   assignment
   literal-expr
@@ -22,6 +23,7 @@
   indexed-expr
   call-expr
   signal-expr
+  static-expr
   lift-expr)
 
 ; Expand a Silicate syntax object after typechecking.
@@ -116,6 +118,9 @@
          (build-vector m ctor)
          (ctor #f)))])
 
+(define-simple-macro (constant name _ expr)
+  (define name expr))
+
 ; An assignment fills the target port's box with the signal
 ; from the right-hand side.
 (define-simple-macro (assignment target expr)
@@ -152,6 +157,9 @@
 ; for reading.
 (define-simple-macro (signal-expr expr)
   (signal-proxy (unbox expr)))
+
+(define-simple-macro (static-expr expr)
+  (static expr))
 
 ; A lift expression is a wrapper element added by the typechecker
 ; when an expression depends on some signal values.

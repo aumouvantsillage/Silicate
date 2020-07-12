@@ -75,11 +75,28 @@
     [(indexed-expr _ expr _)
      (resolve expr)]
 
+    [_ n]))
+
+(define (static-value? n)
+  (match n
+    [(literal-expr _ _)
+     #t]
+    [(name-expr _ name)
+     (constant? (lookup name))]
+    [(field-expr _ expr _ _)
+     (static-value? expr)]
+    [(indexed-expr _ expr indices)
+     (and (static-value? expr) (andmap static-value? indices))]
+    [(call-expr _ _ args)
+     (andmap static-value? args)]
     [_ #f]))
 
 ; A signal expression wraps an expression whose result is a signal
 ; accessed for reading.
 (struct signal-expr node (expr))
+
+; A static expression wraps an expression whose result is constant.
+(struct static-expr node (expr))
 
 ; A lift expression converts an expression that operates on values
 ; into an expression that operates on signals.

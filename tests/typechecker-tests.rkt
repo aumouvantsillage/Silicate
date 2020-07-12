@@ -104,6 +104,45 @@
       (check-equal? (signal-take k-j-b-1-0 5) (signal-take k-j-a-1-0 5))
       (check-equal? (signal-take k-j-b-1-1 5) (signal-take k-j-a-1-1 5)))
 
+    (test-case "Can assign a literal to a signal"
+      (begin-silicate
+        (module
+          (component C
+            (data-port a out (name-expr integer))
+            (assignment (name-expr a) (literal-expr 10)))))
+
+      (define c (make-instance-C))
+      (define c-a (unbox (C-a c)))
+
+      (check-equal? (signal-take c-a 5) (signal-take (static 10) 5)))
+
+    (test-case "Can assign a constant to a signal"
+      (begin-silicate
+        (module
+          (component C
+            (data-port a out (name-expr integer))
+            (constant c (name-expr integer) (literal-expr 10))
+            (assignment (name-expr a) (name-expr c)))))
+
+      (define c (make-instance-C))
+      (define c-a (unbox (C-a c)))
+
+      (check-equal? (signal-take c-a 5) (signal-take (static 10) 5)))
+
+    (test-case "Can assign a static expression to a signal"
+      (begin-silicate
+        (module
+          (component C
+            (data-port a out (name-expr integer))
+            (constant c (name-expr integer) (literal-expr 10))
+            (assignment (name-expr a)
+                        (call-expr + (name-expr c) (literal-expr 1))))))
+
+      (define c (make-instance-C))
+      (define c-a (unbox (C-a c)))
+
+      (check-equal? (signal-take c-a 5) (signal-take (static 11) 5)))
+
     (test-case "Can lift an operation"
       (begin-silicate
         (module

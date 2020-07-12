@@ -8,10 +8,6 @@
   (contract-out
     [typecheck (-> ast-node? ast-node?)]))
 
-; TODO (field-expr expr name) -> (field-expr expr name type)
-; TODO signal access expr     -> (signal-expr ...)
-; TODO lift-expr
-
 (define (typecheck n)
   (match n
     [(ast-module stx body)
@@ -27,6 +23,9 @@
                            (map typecheck params)
                            (map typecheck body))]
 
+    [(ast-constant stx name type expr)
+     (typecheck-constant stx name (typecheck type) (typecheck expr))]
+
     [(ast-assignment stx target expr)
      (typecheck-assignment stx (typecheck target) (typecheck expr))]
 
@@ -40,6 +39,12 @@
      (typecheck-call-expr stx fn-name (map typecheck args))]
 
     [_ n]))
+
+(define (typecheck-constant stx name type expr)
+  (unless (ast-static-value? expr)
+    (raise-syntax-error #f "Non-static value cannot be assigned to constant" expr))
+  ; TODO check expression type
+  (ast-constant stx name type expr))
 
 (define (typecheck-assignment stx target expr)
   ; The target expression must refer to an output data port.
@@ -55,10 +60,11 @@
   (ast-assignment stx target
     ; If the expression refers to a data port, wrap it in a signal-expr.
     ; TODO support local signals.
-    ; TODO wrap constants in static
-    (if (ast-data-port? (ast-resolve expr^))
-      (ast-signal-expr (ast-node-stx expr^) expr^)
-      expr^)))
+    (cond [(ast-data-port? (ast-resolve expr^))
+           (ast-signal-expr (ast-node-stx expr^) expr^)]
+          [(ast-static-value? expr^)
+           (ast-static-expr (ast-node-stx expr^) expr^)]
+          [else expr^])))
 
 (define (typecheck-field-expr stx expr name)
   (match (ast-resolve expr)
@@ -110,5 +116,5 @@
          [_ (values b-lst a)]))]
 
     ; TODO lift indexed-expr with signal as index
-    
+
     [_ n]))

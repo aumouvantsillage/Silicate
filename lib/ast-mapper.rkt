@@ -5,8 +5,8 @@
   (for-syntax
     racket
     syntax/parse
-    (prefix-in stx- "syntax-classes.rkt")
-    (prefix-in ast- "ast.rkt")
+    (prefix-in stx/ "syntax-classes.rkt")
+    (prefix-in ast/ "ast.rkt")
     "scope.rkt"))
 
 (provide
@@ -17,7 +17,7 @@
 
 (begin-for-syntax
   (define (bind-named-elt! elt)
-    (bind! (ast-named-elt-name elt) elt))
+    (bind! (ast/named-elt-name elt) elt))
 
   (define (syntax->ast stx)
     (syntax-parse stx
@@ -25,155 +25,155 @@
       [(begin-silicate mod)
        (syntax->ast #'mod)]
 
-      [:stx-module
+      [:stx/module
        (with-scope
-         (ast-module stx (map syntax->ast (attribute body))))]
+         (ast/module stx (map syntax->ast (attribute body))))]
 
-      [:stx-interface
+      [:stx/interface
        (bind-named-elt!
          (with-scope
-           (ast-make-design-unit ast-interface stx #'name
+           (ast/make-design-unit ast/interface stx #'name
              (map syntax->ast (attribute param))
              (map syntax->ast (attribute body)))))]
 
-      [:stx-component
+      [:stx/component
        (bind-named-elt!
          (with-scope
-           (ast-make-design-unit ast-component stx #'name
+           (ast/make-design-unit ast/component stx #'name
              (map syntax->ast (attribute param))
              (map syntax->ast (attribute body)))))]
 
-      [:stx-parameter
+      [:stx/parameter
        (bind-named-elt!
-         (ast-parameter stx #'name (syntax->ast #'type)))]
+         (ast/parameter stx #'name (syntax->ast #'type)))]
 
-      [:stx-data-port
+      [:stx/data-port
        (bind-named-elt!
-         (ast-data-port stx #'name (syntax->datum #'mode) (syntax->ast #'type)))]
+         (ast/data-port stx #'name (syntax->datum #'mode) (syntax->ast #'type)))]
 
-      [:stx-composite-port
+      [:stx/composite-port
        (define m (attribute mult))
        (bind-named-elt!
-         (ast-composite-port stx #'name
+         (ast/composite-port stx #'name
            (attribute flip?)
-           (if m (syntax->ast m) (ast-literal-expr stx 1))
+           (if m (syntax->ast m) (ast/literal-expr stx 1))
            (add-scope #'intf-name)
            (map syntax->ast (attribute arg))))]
 
-      [:stx-inline-composite-port
-       (ast-inline-composite-port stx
+      [:stx/inline-composite-port
+       (ast/inline-composite-port stx
          (attribute flip?)
          (add-scope #'intf-name)
          (map syntax->ast (attribute arg)))]
 
-      [:stx-constant
+      [:stx/constant
        (bind-named-elt!
-         (ast-constant stx #'name (syntax->ast #'expr)))]
+         (ast/constant stx #'name (syntax->ast #'expr)))]
 
-      [:stx-local-signal
+      [:stx/local-signal
        (bind-named-elt!
-         (ast-local-signal stx #'name (syntax->ast #'expr)))]
+         (ast/local-signal stx #'name (syntax->ast #'expr)))]
 
-      [:stx-assignment
-       (ast-assignment stx (syntax->ast #'target) (syntax->ast #'expr))]
+      [:stx/assignment
+       (ast/assignment stx (syntax->ast #'target) (syntax->ast #'expr))]
 
-      [:stx-literal-expr
-       (ast-literal-expr stx (syntax->datum #'value))]
+      [:stx/literal-expr
+       (ast/literal-expr stx (syntax->datum #'value))]
 
-      [:stx-name-expr
-       (ast-name-expr stx (add-scope #'name))]
+      [:stx/name-expr
+       (ast/name-expr stx (add-scope #'name))]
 
-      [:stx-field-expr
-       (ast-field-expr stx (syntax->ast #'expr) #'field-name #f)]
+      [:stx/field-expr
+       (ast/field-expr stx (syntax->ast #'expr) #'field-name #f)]
 
-      [:stx-indexed-expr
-       (ast-indexed-expr stx (syntax->ast #'expr) (map syntax->ast (attribute index)))]
+      [:stx/indexed-expr
+       (ast/indexed-expr stx (syntax->ast #'expr) (map syntax->ast (attribute index)))]
 
-      [:stx-call-expr
-       (ast-call-expr stx #'fn-name (map syntax->ast (attribute arg)))]))
+      [:stx/call-expr
+       (ast/call-expr stx #'fn-name (map syntax->ast (attribute arg)))]))
 
 
   (define (ast->syntax n)
     (match n
-      [(ast-module stx body)
+      [(ast/module stx body)
        (quasisyntax/loc stx
          (module #,@(map ast->syntax body)))]
 
-      [(ast-component stx name params body _)
+      [(ast/component stx name params body _)
        (quasisyntax/loc stx
          (component #,name
            #,@(map ast->syntax params)
            #,@(map ast->syntax body)))]
 
-      [(ast-interface stx name params body _)
+      [(ast/interface stx name params body _)
        (quasisyntax/loc stx
          (interface #,name
            #,@(map ast->syntax params)
            #,@(map ast->syntax body)))]
 
-      [(ast-data-port stx name mode type)
+      [(ast/data-port stx name mode type)
        (quasisyntax/loc stx
          (data-port #,name #,mode #,(ast->syntax type)))]
 
-      [(ast-composite-port stx name flip? mult intf-name args)
+      [(ast/composite-port stx name flip? mult intf-name args)
        (quasisyntax/loc stx
          (composite-port #,name
            (multiplicity #,(ast->syntax mult))
            #,@(if flip? (list #'flip) empty)
            #,intf-name #,@(map ast->syntax args)))]
 
-      [(ast-parameter stx name type)
+      [(ast/parameter stx name type)
        (quasisyntax/loc stx
          (parameter #,name #,(ast->syntax type)))]
 
-      [(ast-constant stx name expr)
+      [(ast/constant stx name expr)
        (quasisyntax/loc stx
          (constant #,name #,(ast->syntax expr)))]
 
-      [(ast-local-signal stx name expr)
+      [(ast/local-signal stx name expr)
        (quasisyntax/loc stx
          (local-signal #,name #,(ast->syntax expr)))]
-         
-      [(ast-assignment stx target expr)
+
+      [(ast/assignment stx target expr)
        (quasisyntax/loc stx
          (assignment #,(ast->syntax target) #,(ast->syntax expr)))]
 
-      [(ast-literal-expr stx value)
+      [(ast/literal-expr stx value)
        (quasisyntax/loc stx
          (literal-expr #,value))]
 
-      [(ast-name-expr stx name)
+      [(ast/name-expr stx name)
        (quasisyntax/loc stx
          (name-expr #,name))]
 
-      [(ast-field-expr stx expr field-name type-name)
+      [(ast/field-expr stx expr field-name type-name)
        (quasisyntax/loc stx
          (field-expr #,(ast->syntax expr) #,field-name #,type-name))]
 
-      [(ast-indexed-expr stx expr indices)
+      [(ast/indexed-expr stx expr indices)
        (quasisyntax/loc stx
          (indexed-expr #,(ast->syntax expr) #,@(map ast->syntax indices)))]
 
-      [(ast-call-expr stx fn-name args)
+      [(ast/call-expr stx fn-name args)
        (quasisyntax/loc stx
          (call-expr #,fn-name #,@(map ast->syntax args)))]
 
-      [(ast-signal-expr stx expr)
+      [(ast/signal-expr stx expr)
        (quasisyntax/loc stx
          (signal-expr #,(ast->syntax expr)))]
 
-      [(ast-static-expr stx expr)
+      [(ast/static-expr stx expr)
        (quasisyntax/loc stx
          (static-expr #,(ast->syntax expr)))]
 
-      [(ast-lift-expr stx bindings expr)
+      [(ast/lift-expr stx bindings expr)
        (quasisyntax/loc stx
          (lift-expr #,@(for/list ([(k v) (in-dict bindings)])
                          (list k (ast->syntax v)))
                     #,(ast->syntax expr)))]
 
       ; Common case: return the syntax object associated with this ast node
-      [(ast-node stx) stx]
+      [(ast/node stx) stx]
 
       ; If n is not an AST node, return it directly.
       [_ n]))

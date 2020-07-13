@@ -39,7 +39,7 @@
 (define-syntax-class local-signal
   #:datum-literals [local-signal]
   (pattern (local-signal name expr)))
-  
+
 (define-syntax-class assignment
   #:datum-literals [assignment]
   (pattern (assignment target expr)))

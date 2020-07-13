@@ -30,6 +30,8 @@ parameter: ID /":" ("type" | type-expression)
 
 constant: /"const" ID /"=" expression
 
+local-signal: /"let" ID /"=" expression
+
 data-port: /"port" ID /":" ("in" | "out") type-expression
 
 composite-port: /"port" ID multiplicity? /":" "flip"? ID argument-list?

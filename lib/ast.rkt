@@ -49,6 +49,8 @@
 
 (struct constant named-elt (expr))
 
+(struct local-signal named-elt (expr))
+
 (struct assignment node (target expr))
 
 (struct literal-expr node (value))

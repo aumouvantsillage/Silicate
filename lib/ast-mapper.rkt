@@ -70,6 +70,10 @@
        (bind-named-elt!
          (ast-constant stx #'name (syntax->ast #'expr)))]
 
+      [:stx-local-signal
+       (bind-named-elt!
+         (ast-local-signal stx #'name (syntax->ast #'expr)))]
+
       [:stx-assignment
        (ast-assignment stx (syntax->ast #'target) (syntax->ast #'expr))]
 
@@ -126,6 +130,10 @@
        (quasisyntax/loc stx
          (constant #,name #,(ast->syntax expr)))]
 
+      [(ast-local-signal stx name expr)
+       (quasisyntax/loc stx
+         (local-signal #,name #,(ast->syntax expr)))]
+         
       [(ast-assignment stx target expr)
        (quasisyntax/loc stx
          (assignment #,(ast->syntax target) #,(ast->syntax expr)))]

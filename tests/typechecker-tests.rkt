@@ -163,6 +163,62 @@
 
       (check-equal? (signal-take c-c 5) (map + (signal-take c-a 5) (signal-take c-b 5))))
 
+    (test-case "Can lift nested calls"
+      (begin-silicate
+        (module
+          (component C
+            (data-port a in (name-expr integer))
+            (data-port b in (name-expr integer))
+            (data-port c in (name-expr integer))
+            (data-port d in (name-expr integer))
+            (data-port e out (name-expr integer))
+            (assignment (name-expr e)
+                        (call-expr +
+                          (call-expr * (name-expr a) (name-expr b))
+                          (call-expr * (name-expr c) (name-expr d)))))))
+
+      (define c (make-instance-C))
+      (define c-a (list->signal (list 10 20 30 40 50)))
+      (define c-b (static 2))
+      (define c-c (list->signal (list 1 2 3 4 5)))
+      (define c-d (static 3))
+
+      (set-box! (C-a c) c-a)
+      (set-box! (C-b c) c-b)
+      (set-box! (C-c c) c-c)
+      (set-box! (C-d c) c-d)
+      (define c-e (unbox (C-e c)))
+
+      (check-equal? (signal-take c-e 5) (list 23 46 69 92 115)))
+
+    (test-case "Can use local signals"
+      (begin-silicate
+        (module
+          (component C
+            (data-port a in (name-expr integer))
+            (data-port b in (name-expr integer))
+            (data-port c in (name-expr integer))
+            (data-port d in (name-expr integer))
+            (data-port e out (name-expr integer))
+            (local-signal ab (call-expr * (name-expr a) (name-expr b)))
+            (local-signal cd (call-expr * (name-expr c) (name-expr d)))
+            (assignment (name-expr e)
+                        (call-expr + (name-expr ab) (name-expr cd))))))
+
+      (define c (make-instance-C))
+      (define c-a (list->signal (list 10 20 30 40 50)))
+      (define c-b (static 2))
+      (define c-c (list->signal (list 1 2 3 4 5)))
+      (define c-d (static 3))
+
+      (set-box! (C-a c) c-a)
+      (set-box! (C-b c) c-b)
+      (set-box! (C-c c) c-c)
+      (set-box! (C-d c) c-d)
+      (define c-e (unbox (C-e c)))
+
+      (check-equal? (signal-take c-e 5) (list 23 46 69 92 115)))
+
     (test-case "Can access simple ports in a vector composite port with dynamic indices"
       (begin-silicate
         (module

@@ -27,6 +27,9 @@
     [(ast-constant stx name expr)
      (typecheck-constant stx name (typecheck expr))]
 
+    [(ast-local-signal stx name expr)
+     (typecheck-local-signal stx name (typecheck expr))]
+
     [(ast-assignment stx target expr)
      (typecheck-assignment stx (typecheck target) (typecheck expr))]
 
@@ -47,60 +50,42 @@
   ; TODO check expression type
   (ast-constant stx name expr))
 
+(define (typecheck-local-signal stx name expr)
+  ; TODO check expression type
+  (ast-local-signal stx name (typecheck-assigned-expr expr)))
+
 (define (typecheck-assignment stx target expr)
   ; The target expression must refer to an output data port.
-  ; TODO support other port modes: out flip/in inst/in inst/flip/out local
+  ; TODO support other port modes: out flip/in inst/in inst/flip/out
   ; TODO support assignment from composite to composite.
-  ; TODO support other targets such as local signals.
   ; TODO check circular dependencies.
   (define p (ast-resolve target))
   (unless (and (ast-data-port? p) (eq? (ast-data-port-mode p) 'out))
     (raise-syntax-error #f "Invalid assignment target" target))
 
+  (ast-assignment stx target (typecheck-assigned-expr expr)))
+
+(define (typecheck-assigned-expr expr)
   ; If the source expression depends on signals, lift it.
-  (define expr^ (lift-if-needed expr))
+  (define lexpr (lift-if-needed expr))
 
-  (ast-assignment stx target
-    ; TODO support local signals.
-    (match expr^
-      ; If expr^ is a lift-expr that wraps a signal read,
-      ; wrap it also in a signal-expr.
-      [(ast-lift-expr stx^ bindings body)
-       (if (ast-data-port? (ast-resolve body))
-         (ast-lift-expr stx^ bindings (ast-signal-expr stx^ body))
-         expr^)]
+  (match lexpr
+    ; If lexpr is a lift-expr that wraps a signal read,
+    ; wrap it also in a signal-expr.
+    [(ast-lift-expr lstx bindings body)
+     (if (ast-data-port? (ast-resolve body))
+       (ast-lift-expr lstx bindings (ast-signal-expr lstx body))
+       lexpr)]
 
-      ; If expr^ has a static value, wrap it in a static-expr.
-      [(? ast-static-value? (ast-node stx^))
-       (ast-static-expr stx^ expr^)]
+    ; If lexpr has a static value, wrap it in a static-expr.
+    [(? ast-static-value? (ast-node lstx))
+     (ast-static-expr lstx lexpr)]
 
-      ; If expr^ resolves to a signal, wrap it in a signal-expr.
-      [(ast-node stx^) #:when (ast-data-port? (ast-resolve expr^))
-       (ast-signal-expr stx^ expr^)]
+    ; If lexpr resolves to a data port, wrap it in a signal-expr.
+    [(ast-node lstx) #:when (ast-data-port? (ast-resolve lexpr))
+     (ast-signal-expr lstx lexpr)]
 
-      [_ expr^])))
-
-(define (typecheck-field-expr stx expr name)
-  (match (ast-resolve expr)
-    [(ast-composite-port _ _ _ _ intf-name _)
-     ; Check that a port with that name exists in the interface.
-     (ast-design-unit-lookin (lookup intf-name ast-interface?) name)
-     ; Return a new field-expr with an explicit interface name.
-     (ast-field-expr stx expr name intf-name)]
-
-    ; TODO support local signals.
-
-    [_ (raise-syntax-error #f "Expression not suitable for field access" stx)]))
-
-(define (typecheck-indexed-expr stx expr indices)
-  (unless (ast-composite-port? (ast-resolve expr))
-    (raise-syntax-error #f "Expression not suitable for indexing" stx))
-  (ast-indexed-expr stx expr indices))
-
-(define (typecheck-call-expr stx fn-name args)
-  ; TODO check that fn-name is bound or built-in
-  ; TODO typecheck arguments against fn
-  (ast-call-expr stx fn-name args))
+    [_ lexpr]))
 
 (define (lift-if-needed n)
   (match n
@@ -130,14 +115,45 @@
       ; accumulate its bindings and unwrap its expression.
       [(ast-lift-expr _ bindings expr)
        (values (append bindings b-lst) (cons expr a-lst))]
-      ; If the argument resolves to a signal,
+
+      ; If the argument resolves to a data port, wrap it in a signal-expr,
       ; create a binding and replace it with a name-expr.
-      ; TODO support local signals.
       [(ast-node stx) #:when (ast-data-port? (ast-resolve a))
        (define bname (gensym "lift"))
        (define new-binding (cons bname (ast-signal-expr stx a)))
        (define new-arg (ast-name-expr stx bname))
        (values (cons new-binding b-lst) (cons new-arg a-lst))]
+
+      ; If the argument resolves to a local signal,
+      ; create a binding and replace it with a name-expr.
+      [(ast-node stx) #:when (ast-local-signal? (ast-resolve a))
+       (define bname (gensym "lift"))
+       (define new-binding (cons bname a))
+       (define new-arg (ast-name-expr stx bname))
+       (values (cons new-binding b-lst) (cons new-arg a-lst))]
+
       ; In the other cases, keep the current list of bindings
       ; and the current argument.
       [_ (values b-lst (cons a a-lst))])))
+
+(define (typecheck-field-expr stx expr name)
+  (match (ast-resolve expr)
+    [(ast-composite-port _ _ _ _ intf-name _)
+     ; Check that a port with that name exists in the interface.
+     (ast-design-unit-lookin (lookup intf-name ast-interface?) name)
+     ; Return a new field-expr with an explicit interface name.
+     (ast-field-expr stx expr name intf-name)]
+
+    ; TODO support local signals.
+
+    [_ (raise-syntax-error #f "Expression not suitable for field access" stx)]))
+
+(define (typecheck-indexed-expr stx expr indices)
+  (unless (ast-composite-port? (ast-resolve expr))
+    (raise-syntax-error #f "Expression not suitable for indexing" stx))
+  (ast-indexed-expr stx expr indices))
+
+(define (typecheck-call-expr stx fn-name args)
+  ; TODO check that fn-name is bound or built-in
+  ; TODO typecheck arguments against fn
+  (ast-call-expr stx fn-name args))

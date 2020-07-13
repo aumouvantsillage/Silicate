@@ -12,10 +12,11 @@
 (provide
   module
   interface
+  component
   data-port
   composite-port
   constant
-  component
+  local-signal
   assignment
   literal-expr
   name-expr
@@ -119,6 +120,9 @@
          (ctor #f)))])
 
 (define-simple-macro (constant name expr)
+  (define name expr))
+
+(define-simple-macro (local-signal name expr)
   (define name expr))
 
 ; An assignment fills the target port's box with the signal

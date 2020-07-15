@@ -7,7 +7,7 @@
     (only-in racket empty identity in-syntax)
     racket/syntax
     syntax/parse/define
-    "syntax-classes.rkt"))
+    (prefix-in stx/ "syntax-classes.rkt")))
 
 (provide
   module
@@ -59,21 +59,21 @@
 
   ; Return the list of data and composite ports in the given syntax object.
   (define/map-syntax ports
-    [:data-port      this-syntax]
-    [:composite-port this-syntax])
+    [:stx/data-port      this-syntax]
+    [:stx/composite-port this-syntax])
 
   ; Return the list of port names in the given syntax object.
   (define/map-syntax port-names
-    [:data-port      #'name]
-    [:composite-port #'name])
+    [:stx/data-port      #'name]
+    [:stx/composite-port #'name])
 
   ; Return the list of local signal names in the given syntax object.
   (define/map-syntax local-signal-names
-    [:local-signal #'name])
+    [:stx/local-signal #'name])
 
   ; Return the list of parameter names in the given syntax object.
   (define/map-syntax parameter-names
-    [:parameter #'name]))
+    [:stx/parameter #'name]))
 
 ; Generate a module.
 (define-simple-macro (module body ...)
@@ -81,7 +81,7 @@
 
 ; Generate a struct type and a constructor function from an interface.
 (define-syntax-parser interface
-  [:interface
+  [:stx/interface
    #:with ctor-name        (channel-ctor-name #'name)
    #:with (param-name ...) (parameter-names (attribute param))
    #:with (field-name ...) (port-names (attribute body))
@@ -94,7 +94,7 @@
 ; From a component, generate the same output as for an interface,
 ; and a function with the body of the component.
 (define-syntax-parser component
-  [:component
+  [:stx/component
    #:with inst-ctor-name   (instance-ctor-name #'name)
    #:with chan-ctor-name   (channel-ctor-name  #'name)
    #:with (param-name ...) (parameter-names (attribute param))
@@ -116,7 +116,7 @@
 
 ; Composite port initialization in a channel constructor.
 (define-syntax-parser composite-port
-  [:composite-port
+  [:stx/composite-port
    #:with m (or (attribute mult) #'1)
    #:with chan-ctor-name (channel-ctor-name #'intf-name)
    #'(let ([ctor (λ (z) (chan-ctor-name arg ...))])
@@ -147,7 +147,7 @@
 ; of the interface or record type where the field is declared.
 ; A field expression expands to a field access in a struct instance.
 (define-syntax-parser field-expr
-  [:field-expr
+  [:stx/field-expr
    #:with acc (accessor-name #'type-name #'field-name)
    #'(acc expr)])
 

@@ -1,9 +1,8 @@
 #lang racket
 
 (require
-  (for-syntax
-    "lib/typechecker.rkt")
-  "lib/ast-mapper.rkt"
+  "lib/typechecker.rkt"
+  "lib/decorator.rkt"
   "lib/expander.rkt"
   "lib/signal.rkt"
   "lib/std.rkt")
@@ -16,9 +15,8 @@
     "lib/std.rkt"))
 
 (define-syntax (begin-silicate stx)
-  (define top (typecheck (syntax->ast stx)))
-  (define rkt (ast->syntax top))
-  ; (displayln (syntax->datum rkt))
+  (define top (typecheck (decorate stx)))
+  ; (displayln (syntax->datum top))
   #`(begin
-      #,(ast->proc top)
-      #,rkt))
+      ; #,(ast->proc top)
+      #,top))

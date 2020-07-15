@@ -4,9 +4,24 @@
 
 (provide (all-defined-out))
 
+(define-syntax-class named-elt
+  #:attributes [name]
+  (pattern :interface)
+  (pattern :component)
+  (pattern :parameter)
+  (pattern :data-port)
+  (pattern :composite-port)
+  (pattern :constant)
+  (pattern :local-signal))
+
 (define-syntax-class module
   #:datum-literals [module]
   (pattern (module body ...)))
+
+(define-syntax-class design-unit
+  #:attributes [(param 1) (body 1)]
+  (pattern :interface)
+  (pattern :component))
 
 (define-syntax-class interface
   #:datum-literals [interface]
@@ -25,12 +40,17 @@
   (pattern (data-port name mode type)))
 
 (define-syntax-class composite-port
-  #:datum-literals [composite-port multiplicity flip]
-  (pattern (composite-port name (~optional (multiplicity mult)) (~optional flip?:flip) intf-name arg ...)))
+  #:datum-literals [composite-port multiplicity flip use]
+  (pattern (composite-port name (~optional (multiplicity mult)) (~optional flip?:flip-mode) intf-name arg ...)))
 
 (define-syntax-class inline-composite-port
-  #:datum-literals [inline-composite-port flip]
-  (pattern (inline-composite-port (~optional flip?:flip) intf-name arg ...)))
+  #:datum-literals [inline-composite-port flip use]
+  (pattern (inline-composite-port (~optional flip?:flip-mode) intf-name arg ...)))
+
+(define-syntax-class flip-mode
+  #:datum-literals [flip noflip]
+  (pattern flip)
+  (pattern noflip))
 
 (define-syntax-class constant
   #:datum-literals [constant]
@@ -67,3 +87,7 @@
   (pattern (prefix-expr fn-name right)
     #:attr (arg 1) #'(right))
   (pattern (call-expr fn-name arg ...)))
+
+(define-syntax-class lift-expr
+  #:datum-literals [lift-expr]
+  (pattern (lift-expr binding ...+ expr)))

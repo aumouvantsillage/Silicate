@@ -76,15 +76,15 @@
     (syntax-parse (lift-if-needed stx)
       [:stx/lift-expr
        ; If a lift-expr wraps a signal read, wrap it also in a signal-expr.
-       (if (meta/data-port? (resolve #'expr))
+       (if (meta/signal? (resolve #'expr))
          (quasisyntax/loc stx (lift-expr binding ... (signal-expr expr)))
          this-syntax)]
 
       [_
        ; If stx has a static value, wrap it in a static-expr.
-       ; If stx resolves to a data port, wrap it in a signal-expr.
+       ; If stx resolves to a signal, wrap it in a signal-expr.
        (cond [(static-value? stx)             (quasisyntax/loc stx (static-expr #,stx))]
-             [(meta/data-port? (resolve stx)) (quasisyntax/loc stx (signal-expr #,stx))]
+             [(meta/signal? (resolve stx)) (quasisyntax/loc stx (signal-expr #,stx))]
              [else                            stx])]))
 
   (define (lift-if-needed stx)
@@ -117,19 +117,12 @@
 
         [_
          (define ra (resolve a))
-         (cond [(meta/data-port? ra)
-                ; If the argument resolves to a data port, wrap it in a signal-expr,
+         (cond [(meta/signal? ra)
+                ; If the argument resolves to a signal, wrap it in a signal-expr,
                 ; create a binding and replace it with a name-expr.
                 (define bname (gensym "lift"))
                 (values (cons #`(#,bname (signal-expr #,a)) b-lst)
                         (cons #`(name-expr #,bname)         a-lst))]
-
-               [(meta/local-signal? ra)
-                ; If the argument resolves to a local signal,
-                ; create a binding and replace it with a name-expr.
-                (define bname (gensym "lift"))
-                (values (cons #`(#,bname #,a)       b-lst)
-                        (cons #`(name-expr #,bname) a-lst))]
 
                [else
                 ; In the other cases, keep the current list of bindings

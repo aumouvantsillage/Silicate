@@ -59,18 +59,21 @@
 
   ; Return the list of data and composite ports in the given syntax object.
   (define/map-syntax ports
-    #:datum-literals [data-port composite-port]
-    [((~or* data-port composite-port) _ ...) this-syntax])
+    [:data-port      this-syntax]
+    [:composite-port this-syntax])
 
   ; Return the list of port names in the given syntax object.
   (define/map-syntax port-names
-    #:datum-literals [data-port composite-port]
-    [((~or* data-port composite-port) name _ ...) #'name])
+    [:data-port      #'name]
+    [:composite-port #'name])
+
+  ; Return the list of local signal names in the given syntax object.
+  (define/map-syntax local-signal-names
+    [:local-signal #'name])
 
   ; Return the list of parameter names in the given syntax object.
   (define/map-syntax parameter-names
-    #:datum-literals [parameter]
-    [(parameter name _ ...) #'name]))
+    [:parameter #'name]))
 
 ; Generate a module.
 (define-simple-macro (module body ...)
@@ -102,6 +105,8 @@
          #,@(for/list ([i (in-list (port-names (attribute body)))])
               (define acc (accessor-name #'name i))
               #`(define #,i (#,acc chan)))
+         #,@(for/list ([i (in-list (local-signal-names (attribute body)))])
+              #`(define #,i (box #f)))
          body ...
          chan))])
 
@@ -123,7 +128,7 @@
   (define name expr))
 
 (define-simple-macro (local-signal name expr)
-  (define name expr))
+  (set-box! name expr))
 
 ; An assignment fills the target port's box with the signal
 ; from the right-hand side.

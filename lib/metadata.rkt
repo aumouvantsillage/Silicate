@@ -39,8 +39,10 @@
 (define (make-component stx)
   (component stx (make-design-unit-local-scope stx)))
 
+(struct signal metadata ())
+(struct data-port signal ())
+(struct local-signal signal ())
+
 (struct parameter metadata ())
-(struct data-port metadata ())
 (struct composite-port metadata ())
 (struct constant metadata ())
-(struct local-signal metadata ())

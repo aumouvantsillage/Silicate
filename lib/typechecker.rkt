@@ -19,15 +19,16 @@
       [_          stx]))
 
   (define (typecheck stx)
-    ; TODO inline composite ports
-    (syntax-parse stx
-      [:stx/constant     (typecheck-constant stx #'name (typecheck #'expr))]
-      [:stx/local-signal (typecheck-local-signal stx #'name (typecheck #'expr))]
-      [:stx/assignment   (typecheck-assignment stx (typecheck #'target) (typecheck #'expr))]
-      [:stx/field-expr   (typecheck-field-expr stx (typecheck #'expr) #'field-name)]
-      [:stx/indexed-expr (typecheck-indexed-expr stx (typecheck #'expr) (typecheck* #'(index ...)))]
-      [:stx/call-expr    (typecheck-call-expr stx #'fn-name (typecheck* #'(arg ...)))]
-      [_                 (typecheck* stx)]))
+    (with-lookup-cache
+      ; TODO inline composite ports
+      (syntax-parse stx
+        [:stx/constant     (typecheck-constant stx #'name (typecheck #'expr))]
+        [:stx/local-signal (typecheck-local-signal stx #'name (typecheck #'expr))]
+        [:stx/assignment   (typecheck-assignment stx (typecheck #'target) (typecheck #'expr))]
+        [:stx/field-expr   (typecheck-field-expr stx (typecheck #'expr) #'field-name)]
+        [:stx/indexed-expr (typecheck-indexed-expr stx (typecheck #'expr) (typecheck* #'(index ...)))]
+        [:stx/call-expr    (typecheck-call-expr stx #'fn-name (typecheck* #'(arg ...)))]
+        [_                 (typecheck* stx)])))
 
   (define (resolve stx)
     (syntax-parse stx
@@ -109,25 +110,23 @@
                 ; Lift each argument if needed before proceeding.
                ([a (in-list (map lift-if-needed lst))])
       (syntax-parse a
-        ; If the current argument is already lifted,
-        ; accumulate its bindings and unwrap its expression.
         [:stx/lift-expr
+         ; If the current argument is already lifted,
+         ; accumulate its bindings and unwrap its expression.
          (values (append (attribute binding) b-lst)
                  (cons   #'expr              a-lst))]
 
-        [_
-         (define ra (resolve a))
-         (cond [(meta/signal? ra)
-                ; If the argument resolves to a signal, wrap it in a signal-expr,
-                ; create a binding and replace it with a name-expr.
-                (define bname (gensym "lift"))
-                (values (cons #`(#,bname (signal-expr #,a)) b-lst)
-                        (cons #`(name-expr #,bname)         a-lst))]
+        [_ #:when (meta/signal? (resolve a))
+         ; If the argument resolves to a signal, wrap it in a signal-expr,
+         ; create a binding and replace it with a name-expr.
+         (define bname (gensym "lift"))
+         (values (cons #`(#,bname (signal-expr #,a)) b-lst)
+                 (cons #`(name-expr #,bname)         a-lst))]
 
-               [else
-                ; In the other cases, keep the current list of bindings
-                ; and the current argument.
-                (values b-lst (cons a a-lst))])])))
+        [_
+         ; In the other cases, keep the current list of bindings
+         ; and the current argument.
+         (values b-lst (cons a a-lst))])))
 
   (define (typecheck-field-expr stx expr field-name)
     (match (resolve expr)

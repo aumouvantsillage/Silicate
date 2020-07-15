@@ -48,7 +48,8 @@
     (unless (static-value? expr)
       (raise-syntax-error #f "Non-static value cannot be assigned to constant" expr))
     ; TODO check expression type
-    stx)
+    (quasisyntax/loc stx
+      (constant #,name #,expr)))
 
   (define (static-value? stx)
     (syntax-parse stx
@@ -65,7 +66,6 @@
       (local-signal #,name #,(typecheck-assigned-expr expr))))
 
   (define (typecheck-assignment stx target expr)
-    ; The target expression must refer to an output data port.
     ; TODO check port mode: out flip/in inst/in inst/flip/out
     ; TODO support assignment from composite to composite.
     ; TODO check circular dependencies.
@@ -139,7 +139,7 @@
        (quasisyntax/loc stx
          (field-expr #,expr #,field-name intf-name))]
 
-      ; TODO support local signals.
+      ; TODO support field access in structured types
 
       [_ (raise-syntax-error #f "Expression not suitable for field access" stx)]))
 

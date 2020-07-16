@@ -39,6 +39,10 @@
           (define/syntax-parse :stx/composite-port s)
           (meta/design-unit-ref (lookup #'intf-name meta/interface?) #'field-name)]
 
+         [(meta/instance s)
+          (define/syntax-parse :stx/instance s)
+          (meta/design-unit-ref (lookup #'comp-name meta/component?) #'field-name)]
+
          ; TODO resolve field access for structured data types
 
          [_ (raise-syntax-error #f "Expression not suitable for field access" stx)])]
@@ -138,13 +142,22 @@
        (quasisyntax/loc stx
          (field-expr #,expr #,field-name intf-name))]
 
+      [(meta/instance s)
+       (define/syntax-parse :stx/instance s)
+       ; Check that a port with that name exists in the component.
+       (meta/design-unit-ref (lookup #'comp-name meta/component?) field-name)
+       ; Return a new field-expr with an explicit component name.
+       (quasisyntax/loc stx
+         (field-expr #,expr #,field-name comp-name))]
+
       ; TODO support field access in structured types
 
       [_ (raise-syntax-error #f "Expression not suitable for field access" stx)]))
 
   (define (typecheck-indexed-expr stx expr indices)
     ; TODO support indexed access to array data types.
-    (unless (meta/composite-port? (resolve expr))
+    (define r (resolve expr))
+    (unless (or (meta/composite-port? r) (meta/instance? r))
       (raise-syntax-error #f "Expression not suitable for indexing" stx))
     (quasisyntax/loc stx
       (indexed-expr #,expr #,@indices)))

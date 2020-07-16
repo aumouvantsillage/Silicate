@@ -12,7 +12,8 @@
   (pattern :data-port)
   (pattern :composite-port)
   (pattern :constant)
-  (pattern :local-signal))
+  (pattern :local-signal)
+  (pattern :instance))
 
 (define-syntax-class module
   #:datum-literals [module]
@@ -40,7 +41,7 @@
   (pattern (data-port name mode type)))
 
 (define-syntax-class composite-port
-  #:datum-literals [composite-port multiplicity flip use]
+  #:datum-literals [composite-port multiplicity]
   (pattern (composite-port name (~optional (multiplicity mult)) (~optional flip?:flip-mode) intf-name arg ...)))
 
 (define-syntax-class inline-composite-port
@@ -65,7 +66,7 @@
   (pattern (assignment target expr)))
 
 (define-syntax-class instance
-  #:datum-literals [instance]
+  #:datum-literals [instance multiplicity]
   (pattern (instance name (~optional (multiplicity mult)) comp-name arg ...)))
 
 (define-syntax-class literal-expr

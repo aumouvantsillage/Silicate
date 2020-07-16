@@ -278,4 +278,38 @@
       (set-box! (C-b c) c-b)
 
       (define c-c (unbox (C-c c)))
-      (check-equal? (signal-take c-c (length la)) (map + la lb)))))
+      (check-equal? (signal-take c-c (length la)) (map + la lb)))
+
+    (test-case "Can use local signals"
+      (begin-silicate
+        (module
+          (component C
+            (data-port a in #f)
+            (data-port b in #f)
+            (data-port c in #f)
+            (data-port d in #f)
+            (data-port e out #f)
+            (local-signal ab (lift-expr [a^ (signal-expr (name-expr a))]
+                                        [b^ (signal-expr (name-expr b))]
+                                        (call-expr * a^ b^)))
+            (local-signal cd (lift-expr [c^ (signal-expr (name-expr c))]
+                                        [d^ (signal-expr (name-expr d))]
+                                        (call-expr * c^ d^)))
+            (assignment (name-expr e)
+                        (lift-expr [ab^ (signal-expr (name-expr ab))]
+                                   [cd^ (signal-expr (name-expr cd))]
+                                   (call-expr + ab^ cd^))))))
+
+      (define c (make-instance-C))
+      (define c-a (list->signal (list 10 20 30 40 50)))
+      (define c-b (static 2))
+      (define c-c (list->signal (list 1 2 3 4 5)))
+      (define c-d (static 3))
+
+      (set-box! (C-a c) c-a)
+      (set-box! (C-b c) c-b)
+      (set-box! (C-c c) c-c)
+      (set-box! (C-d c) c-d)
+      (define c-e (unbox (C-e c)))
+
+      (check-equal? (signal-take c-e 5) (list 23 46 69 92 115)))))

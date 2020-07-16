@@ -46,3 +46,5 @@
 (struct parameter metadata ())
 (struct composite-port metadata ())
 (struct constant metadata ())
+
+(struct instance metadata ())

@@ -281,24 +281,22 @@
       (check-equal? (signal-take c-c (length la)) (map + la lb)))
 
     (test-case "Can use local signals"
-      (begin-silicate
-        (module
-          (component C
-            (data-port a in #f)
-            (data-port b in #f)
-            (data-port c in #f)
-            (data-port d in #f)
-            (data-port e out #f)
-            (local-signal ab (lift-expr [a^ (signal-expr (name-expr a))]
-                                        [b^ (signal-expr (name-expr b))]
-                                        (call-expr * a^ b^)))
-            (local-signal cd (lift-expr [c^ (signal-expr (name-expr c))]
-                                        [d^ (signal-expr (name-expr d))]
-                                        (call-expr * c^ d^)))
-            (assignment (name-expr e)
-                        (lift-expr [ab^ (signal-expr (name-expr ab))]
-                                   [cd^ (signal-expr (name-expr cd))]
-                                   (call-expr + ab^ cd^))))))
+      (component C
+        (data-port a in #f)
+        (data-port b in #f)
+        (data-port c in #f)
+        (data-port d in #f)
+        (data-port e out #f)
+        (local-signal ab (lift-expr [a^ (signal-expr (name-expr a))]
+                                    [b^ (signal-expr (name-expr b))]
+                                    (call-expr * a^ b^)))
+        (local-signal cd (lift-expr [c^ (signal-expr (name-expr c))]
+                                    [d^ (signal-expr (name-expr d))]
+                                    (call-expr * c^ d^)))
+        (assignment (name-expr e)
+                    (lift-expr [ab^ (signal-expr (name-expr ab))]
+                               [cd^ (signal-expr (name-expr cd))]
+                               (call-expr + ab^ cd^))))
 
       (define c (make-instance-C))
       (define c-a (list->signal (list 10 20 30 40 50)))
@@ -312,4 +310,53 @@
       (set-box! (C-d c) c-d)
       (define c-e (unbox (C-e c)))
 
-      (check-equal? (signal-take c-e 5) (list 23 46 69 92 115)))))
+      (check-equal? (signal-take c-e 5) (list 23 46 69 92 115)))
+
+    (test-case "Can instantiate a component"
+      (component C
+        (parameter N #f)
+        (data-port a in #f)
+        (data-port b out #f)
+        (assignment (name-expr b)
+                    (lift-expr [a^ (signal-expr (name-expr a))]
+                               (call-expr * a^ N))))
+      (component D
+        (data-port x in #f)
+        (data-port y out #f)
+        (instance c C 10)
+        (assignment (field-expr (name-expr c) a C) (signal-expr (name-expr x)))
+        (assignment (name-expr y) (signal-expr (field-expr (name-expr c) b C))))
+
+      (define d (make-instance-D))
+      (define d-x (list->signal (list 10 20 30 40 50)))
+      (set-box! (D-x d) d-x)
+      (define d-y (unbox (D-y d)))
+
+      (check-equal? (signal-take d-y 5) (list 100 200 300 400 500)))
+
+    (test-case "Can instantiate a multiple component"
+      (component C
+        (parameter N #f)
+        (data-port a in #f)
+        (data-port b out #f)
+        (assignment (name-expr b)
+                    (lift-expr [a^ (signal-expr (name-expr a))]
+                               (call-expr * a^ N))))
+      (component D
+        (data-port x in #f)
+        (data-port y in #f)
+        (data-port z out #f)
+        (instance c (multiplicity 2) C 10)
+        (assignment (field-expr (indexed-expr (name-expr c) 0) a C) (signal-expr (name-expr x)))
+        (assignment (field-expr (indexed-expr (name-expr c) 1) a C) (signal-expr (name-expr y)))
+        (assignment (name-expr z) (lift-expr [b0 (signal-expr (field-expr (indexed-expr (name-expr c) 0) b C))]
+                                             [b1 (signal-expr (field-expr (indexed-expr (name-expr c) 1) b C))]
+                                             (call-expr + b0 b1))))
+      (define d (make-instance-D))
+      (define d-x (list->signal (list 10 20 30 40 50)))
+      (define d-y (list->signal (list 1 2 3 4 5)))
+      (set-box! (D-x d) d-x)
+      (set-box! (D-y d) d-y)
+      (define d-z (unbox (D-z d)))
+
+      (check-equal? (signal-take d-z 5) (list 110 220 330 440 550)))))

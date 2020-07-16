@@ -64,6 +64,10 @@
   #:datum-literals [assignment]
   (pattern (assignment target expr)))
 
+(define-syntax-class instance
+  #:datum-literals [instance]
+  (pattern (instance name (~optional (multiplicity mult)) comp-name arg ...)))
+
 (define-syntax-class literal-expr
   #:datum-literals [literal-expr]
   (pattern (literal-expr value)))

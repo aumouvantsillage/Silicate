@@ -60,13 +60,15 @@
   (define/map-syntax design-unit-field-syntaxes
     [:stx/data-port      this-syntax]
     [:stx/composite-port this-syntax]
-    [:stx/local-signal   this-syntax])
+    [:stx/local-signal   this-syntax]
+    [:stx/instance       this-syntax])
 
   ; Return the list of port and signal names in the given syntax object.
   (define/map-syntax design-unit-field-names
     [:stx/data-port      #'name]
     [:stx/composite-port #'name]
-    [:stx/local-signal   #'name])
+    [:stx/local-signal   #'name]
+    [:stx/instance       #'name])
 
   (define/map-syntax design-unit-statements
     [:stx/constant     this-syntax]
@@ -89,7 +91,7 @@
    #:with (field-name ...) (design-unit-field-names     (attribute body))
    #:with (field-stx ...)  (design-unit-field-syntaxes  (attribute body))
    #'(begin
-       (struct name (field-name ...))
+       (struct name (field-name ...) #:transparent)
        (define (ctor-name param-name ...)
          (name (design-unit-field-ctor field-stx) ...)))])
 
@@ -120,6 +122,13 @@
      #:with m (or (attribute mult) #'1)
      #:with chan-ctor-name (channel-ctor-name #'intf-name)
      #'(let ([ctor (λ (z) (chan-ctor-name arg ...))])
+         (if (> m 1)
+           (build-vector m ctor)
+           (ctor #f)))]
+    [(_ :stx/instance)
+     #:with m (or (attribute mult) #'1)
+     #:with inst-ctor-name (instance-ctor-name #'comp-name)
+     #'(let ([ctor (λ (z) (inst-ctor-name arg ...))])
          (if (> m 1)
            (build-vector m ctor)
            (ctor #f)))]))

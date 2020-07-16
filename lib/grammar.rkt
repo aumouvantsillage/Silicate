@@ -24,7 +24,8 @@ component: /"component" ID parameter-list? component-item* /"end"
 
 @component-item:
   interface-item |
-  statement
+  assignment |
+  instance
 
 parameter: ID /":" ("type" | type-expression)
 
@@ -43,12 +44,11 @@ multiplicity: /"[" expression /"]"
 ; TODO named arguments
 @argument-list: /"(" (expression /",")* expression? /")"
 
-; TODO other statements
-@statement:
-  assignment
-
 assignment:
   expression /"=" expression
+
+instance:
+  /"instance" ID multiplicity? /"=" ID argument-list?
 
 ; Expressions ------------------------------------------------------------------
 

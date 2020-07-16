@@ -245,3 +245,54 @@
       (define j-d-lst (list 10 20 30 20 10 30))
       (define j-d (unbox (J-d j)))
       (check-equal? (signal-take j-d (length j-d-lst)) j-d-lst))))
+
+    ; (test-case "Can instantiate a component"
+    ;   (begin-silicate
+    ;     (module
+    ;       (component C
+    ;         (parameter N (name-expr integer))
+    ;         (data-port a in (name-expr integer))
+    ;         (data-port b out (name-expr integer))
+    ;         (assignment (name-expr b) (call-expr * (name-expr a) (name-expr N))))
+    ;       (component D
+    ;         (data-port x in (name-expr integer))
+    ;         (data-port y out (name-expr integer))
+    ;         (instance c C 10)
+    ;         (assignment (field-expr (name-expr c) a) (name-expr x))
+    ;         (assignment (name-expr y) (field-expr (name-expr c) b)))))
+    ;
+    ;   (define d (make-instance-D))
+    ;   (define d-x (list->signal (list 10 20 30 40 50)))
+    ;   (set-box! (D-x d) d-x)
+    ;   (define d-y (unbox (D-y d)))
+    ;
+    ;   (check-equal? (signal-take d-y 5) (list 100 200 300 400 500)))))
+
+    ; (test-case "Can instantiate a multiple component"
+    ;   (begin-silicate
+    ;     (module
+    ;       (component C
+    ;         (parameter N (name-expr integer))
+    ;         (data-port a in (name-expr integer))
+    ;         (data-port b out (name-expr integer))
+    ;         (assignment (name-expr b)
+    ;                     (lift-expr [a^ (signal-expr (name-expr a))]
+    ;                                (call-expr * a^ N))))
+    ;       (component D
+    ;         (data-port x in (name-expr integer))
+    ;         (data-port y in (name-expr integer))
+    ;         (data-port z out (name-expr integer))
+    ;         (instance c (multiplicity 2) C 10)
+    ;         (assignment (field-expr (indexed-expr (name-expr c) 0) a C) (signal-expr (name-expr x)))
+    ;         (assignment (field-expr (indexed-expr (name-expr c) 1) a C) (signal-expr (name-expr y)))
+    ;         (assignment (name-expr z) (lift-expr [b0 (signal-expr (field-expr (indexed-expr (name-expr c) 0) b C))]
+    ;                                              [b1 (signal-expr (field-expr (indexed-expr (name-expr c) 1) b C))]
+    ;                                              (call-expr + b0 b1))))))
+    ;   (define d (make-instance-D))
+    ;   (define d-x (list->signal (list 10 20 30 40 50)))
+    ;   (define d-y (list->signal (list 1 2 3 4 5)))
+    ;   (set-box! (D-x d) d-x)
+    ;   (set-box! (D-y d) d-y)
+    ;   (define d-z (unbox (D-z d)))
+    ;
+    ;   (check-equal? (signal-take d-z 5) (list 110 220 330 440 550)))))

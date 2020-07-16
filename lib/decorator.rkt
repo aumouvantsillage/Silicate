@@ -46,6 +46,12 @@
        (quasisyntax/loc stx
          (inline-composite-port flip?^ #,(add-scope #'intf-name) #,@(decorate* #'(arg ...))))]
 
+      [:stx/instance
+       #:with mult^ (if (attribute mult) (decorate #'mult) #'(literal-expr 1))
+       (bind!/meta meta/instance
+         (quasisyntax/loc stx
+           (instance name (multiplicity mult^) #,(add-scope #'comp-name) #,@(decorate* #'(arg ...)))))]
+
       [:stx/name-expr
        (quasisyntax/loc stx
          (name-expr #,(add-scope #'name)))]

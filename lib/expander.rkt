@@ -13,8 +13,7 @@
   module
   interface
   component
-  data-port
-  composite-port
+  design-unit-field-ctor
   constant
   local-signal
   assignment
@@ -57,22 +56,25 @@
           (syntax-parse i
             body ... [_ #f])))))
 
-  ; Return the list of data and composite ports in the given syntax object.
-  (define/map-syntax ports
+  ; Return the list of ports and signals in the given syntax object.
+  (define/map-syntax design-unit-field-syntaxes
     [:stx/data-port      this-syntax]
-    [:stx/composite-port this-syntax])
+    [:stx/composite-port this-syntax]
+    [:stx/local-signal   this-syntax])
 
-  ; Return the list of port names in the given syntax object.
-  (define/map-syntax port-names
+  ; Return the list of port and signal names in the given syntax object.
+  (define/map-syntax design-unit-field-names
     [:stx/data-port      #'name]
-    [:stx/composite-port #'name])
+    [:stx/composite-port #'name]
+    [:stx/local-signal   #'name])
 
-  ; Return the list of local signal names in the given syntax object.
-  (define/map-syntax local-signal-names
-    [:stx/local-signal #'name])
+  (define/map-syntax design-unit-statements
+    [:stx/constant     this-syntax]
+    [:stx/local-signal this-syntax]
+    [:stx/assignment   this-syntax])
 
   ; Return the list of parameter names in the given syntax object.
-  (define/map-syntax parameter-names
+  (define/map-syntax design-unit-parameter-names
     [:stx/parameter #'name]))
 
 ; Generate a module.
@@ -83,13 +85,13 @@
 (define-syntax-parser interface
   [:stx/interface
    #:with ctor-name        (channel-ctor-name #'name)
-   #:with (param-name ...) (parameter-names (attribute param))
-   #:with (field-name ...) (port-names (attribute body))
-   #:with (port ...)       (ports (attribute body))
+   #:with (param-name ...) (design-unit-parameter-names (attribute param))
+   #:with (field-name ...) (design-unit-field-names     (attribute body))
+   #:with (field-stx ...)  (design-unit-field-syntaxes  (attribute body))
    #'(begin
        (struct name (field-name ...))
        (define (ctor-name param-name ...)
-         (name port ...)))])
+         (name (design-unit-field-ctor field-stx) ...)))])
 
 ; From a component, generate the same output as for an interface,
 ; and a function with the body of the component.
@@ -97,32 +99,30 @@
   [:stx/component
    #:with inst-ctor-name   (instance-ctor-name #'name)
    #:with chan-ctor-name   (channel-ctor-name  #'name)
-   #:with (param-name ...) (parameter-names (attribute param))
+   #:with (param-name ...) (design-unit-parameter-names (attribute param))
+   #:with (stmt ...)       (design-unit-statements      (attribute body))
    #`(begin
        (interface name param ... body ...)
        (define (inst-ctor-name param-name ...)
          (define chan (chan-ctor-name param-name ...))
-         #,@(for/list ([i (in-list (port-names (attribute body)))])
+         #,@(for/list ([i (in-list (design-unit-field-names (attribute body)))])
               (define acc (accessor-name #'name i))
               #`(define #,i (#,acc chan)))
-         #,@(for/list ([i (in-list (local-signal-names (attribute body)))])
-              #`(define #,i (box #f)))
-         body ...
+         stmt ...
          chan))])
 
 ; Data port initialization in a channel constructor.
-(define-simple-macro (data-port _ ...)
-  (box #f))
-
-; Composite port initialization in a channel constructor.
-(define-syntax-parser composite-port
-  [:stx/composite-port
-   #:with m (or (attribute mult) #'1)
-   #:with chan-ctor-name (channel-ctor-name #'intf-name)
-   #'(let ([ctor (λ (z) (chan-ctor-name arg ...))])
-       (if (> m 1)
-         (build-vector m ctor)
-         (ctor #f)))])
+(define-syntax (design-unit-field-ctor stx)
+  (syntax-parse stx
+    [(_ :stx/data-port)    #'(box #f)]
+    [(_ :stx/local-signal) #'(box #f)]
+    [(_ :stx/composite-port)
+     #:with m (or (attribute mult) #'1)
+     #:with chan-ctor-name (channel-ctor-name #'intf-name)
+     #'(let ([ctor (λ (z) (chan-ctor-name arg ...))])
+         (if (> m 1)
+           (build-vector m ctor)
+           (ctor #f)))]))
 
 (define-simple-macro (constant name expr)
   (define name expr))

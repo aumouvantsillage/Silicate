@@ -13,6 +13,7 @@
   (pattern :composite-port)
   (pattern :constant)
   (pattern :local-signal)
+  (pattern :alias)
   (pattern :instance))
 
 (define-syntax-class module
@@ -42,20 +43,21 @@
 
 (define-syntax-class composite-port
   #:datum-literals [composite-port multiplicity]
-  (pattern (composite-port name (~optional (multiplicity mult)) (~optional flip?:flip-mode) intf-name arg ...)))
+  (pattern (composite-port name (~optional (multiplicity mult)) mode:composite-mode ... intf-name arg ...)
+    #:attr splice? (member 'splice (syntax->datum #'(mode ...)))
+    #:attr flip?   (member 'splice (syntax->datum #'(mode ...)))))
 
-(define-syntax-class inline-composite-port
-  #:datum-literals [inline-composite-port flip use]
-  (pattern (inline-composite-port (~optional flip?:flip-mode) intf-name arg ...)))
-
-(define-syntax-class flip-mode
-  #:datum-literals [flip noflip]
-  (pattern flip)
-  (pattern noflip))
+(define-syntax-class composite-mode
+  (pattern (~datum flip))
+  (pattern (~datum splice)))
 
 (define-syntax-class constant
   #:datum-literals [constant]
   (pattern (constant name expr)))
+
+(define-syntax-class alias
+  #:datum-literals [alias]
+  (pattern (alias name port-name intf-name)))
 
 (define-syntax-class local-signal
   #:datum-literals [local-signal]

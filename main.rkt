@@ -16,7 +16,7 @@
 
 (define-syntax (begin-silicate stx)
   (define top (typecheck (decorate stx)))
-  ; (displayln (syntax->datum top))
+  ; (printf "---~n~a\n" (syntax->datum top))
   #`(begin
       ; #,(ast->proc top)
       #,top))

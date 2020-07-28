@@ -292,4 +292,78 @@
       (set-box! (D-y d) d-y)
       (define d-z (unbox (D-z d)))
 
-      (check-equal? (signal-take d-z 5) (list 110 220 330 440 550)))))
+      (check-equal? (signal-take d-z 5) (list 110 220 330 440 550)))
+
+    (test-case "Can resolve ports in a spliced interface"
+      (begin-silicate
+        (module
+          (interface I
+            (data-port a in  (name-expr integer))
+            (data-port b out (name-expr integer)))
+          (component J
+            (composite-port c splice I)
+            (assignment (name-expr b) (name-expr a)))))
+
+      (define j (make-instance-J))
+      (define j-a (static 10))
+      (set-box! (I-a (J-c j)) j-a)
+
+      (define j-b (unbox (I-b (J-c j))))
+      (check-equal? (signal-take j-b 5) (signal-take j-a 5)))
+
+    (test-case "Can resolve ports in a hierarchy from a spliced interface"
+      (begin-silicate
+        (module
+          (interface I
+            (data-port a in  (name-expr integer))
+            (data-port b out (name-expr integer)))
+          (interface J
+            (composite-port c I))
+          (component K
+            (composite-port d splice J)
+            (assignment (field-expr (name-expr c) b) (field-expr (name-expr c) a)))))
+
+      (define k (make-instance-K))
+      (define k-a (static 10))
+      (set-box! (I-a (J-c (K-d k))) k-a)
+
+      (define k-b (unbox (I-b (J-c (K-d k)))))
+      (check-equal? (signal-take k-b 5) (signal-take k-a 5)))
+
+    (test-case "Can resolve ports in an interface with a spliced composite port"
+      (begin-silicate
+        (module
+          (interface I
+            (data-port a in  (name-expr integer))
+            (data-port b out (name-expr integer)))
+          (interface J
+            (composite-port c splice I))
+          (component K
+            (composite-port d J)
+            (assignment (field-expr (name-expr d) b) (field-expr (name-expr d) a)))))
+
+      (define k (make-instance-K))
+      (define k-a (static 10))
+      (set-box! (I-a (J-c (K-d k))) k-a)
+
+      (define k-b (unbox (I-b (J-c (K-d k)))))
+      (check-equal? (signal-take k-b 5) (signal-take k-a 5)))
+
+    (test-case "Can resolve ports in a doubly spliced composite port"
+      (begin-silicate
+        (module
+          (interface I
+            (data-port a in  (name-expr integer))
+            (data-port b out (name-expr integer)))
+          (interface J
+            (composite-port c splice I))
+          (component K
+            (composite-port d splice J)
+            (assignment (name-expr b) (name-expr a)))))
+
+      (define k (make-instance-K))
+      (define k-a (static 10))
+      (set-box! (I-a (J-c (K-d k))) k-a)
+
+      (define k-b (unbox (I-b (J-c (K-d k)))))
+      (check-equal? (signal-take k-b 5) (signal-take k-a 5)))))

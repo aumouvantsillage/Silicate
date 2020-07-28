@@ -14,12 +14,17 @@
 
 (struct design-unit metadata (local-scope))
 
+; TODO local scope should include only ports,
 (define (make-local-scope lst [sc (make-immutable-free-id-table)])
   (for/fold ([acc sc])
             ([i (in-list lst)])
     (syntax-parse i
-      [:stx/named-elt (dict-set acc #'name (syntax-property i 'meta))]
-      [_              acc])))
+      [:stx/named-elt
+       (define meta (syntax-property i 'meta))
+       (unless meta
+         (raise-syntax-error #f "No metadata attached to name" #'name))
+       (dict-set acc #'name meta)]
+      [_ acc])))
 
 (define (make-design-unit-local-scope stx)
   (define/syntax-parse :stx/design-unit stx)
@@ -46,5 +51,4 @@
 (struct parameter metadata ())
 (struct composite-port metadata ())
 (struct constant metadata ())
-
 (struct instance metadata ())

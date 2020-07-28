@@ -18,6 +18,7 @@
   local-signal
   assignment
   literal-expr
+  alias
   name-expr
   field-expr
   indexed-expr
@@ -26,11 +27,6 @@
   static-expr
   lift-expr)
 
-; Expand a Silicate syntax object after typechecking.
-;
-; Inline composite ports have been inlined.
-; Port references contain the name of the interface.
-;
 ; TODO provide
 
 (begin-for-syntax
@@ -73,7 +69,11 @@
   (define/map-syntax design-unit-statements
     [:stx/constant     this-syntax]
     [:stx/local-signal this-syntax]
+    [:stx/alias        this-syntax]
     [:stx/assignment   this-syntax])
+
+  (define/map-syntax design-unit-aliases
+    [:stx/alias this-syntax])
 
   ; Return the list of parameter names in the given syntax object.
   (define/map-syntax design-unit-parameter-names
@@ -90,10 +90,19 @@
    #:with (param-name ...) (design-unit-parameter-names (attribute param))
    #:with (field-name ...) (design-unit-field-names     (attribute body))
    #:with (field-stx ...)  (design-unit-field-syntaxes  (attribute body))
-   #'(begin
+   #:with (alias-stx ...)  (design-unit-aliases         (attribute body))
+   #`(begin
        (struct name (field-name ...) #:transparent)
        (define (ctor-name param-name ...)
-         (name (design-unit-field-ctor field-stx) ...)))])
+         (name (design-unit-field-ctor field-stx) ...))
+       #,@(for/list ([i (in-list (attribute alias-stx))])
+            (define/syntax-parse a:stx/alias i)
+            ; For each alias, create an accessor in the current interface.
+            #`(define (#,(accessor-name #'name #'a.name) x)
+                ; Call the original accessor for the aliased field in the target interface...
+                (#,(accessor-name #'a.intf-name #'a.name)
+                  ; ... with the result of the accessor for the spliced composite port in the current interface.
+                  (#,(accessor-name #'name #'a.port-name) x)))))])
 
 ; From a component, generate the same output as for an interface,
 ; and a function with the body of the component.
@@ -138,6 +147,9 @@
 
 (define-simple-macro (local-signal name expr)
   (set-box! name expr))
+
+(define-simple-macro (alias name port-name intf-name)
+  (define name (field-expr (name-expr port-name) name intf-name)))
 
 ; An assignment fills the target port's box with the signal
 ; from the right-hand side.

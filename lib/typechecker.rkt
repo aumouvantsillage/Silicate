@@ -30,16 +30,25 @@
         [:stx/call-expr    (typecheck-call-expr stx #'fn-name (typecheck* #'(arg ...)))]
         [_                 (typecheck* stx)])))
 
+  ; Find the metadata of the given expression result.
   (define (resolve stx)
     (syntax-parse stx
-      [:stx/name-expr (lookup #'name)]
+      [:stx/name-expr
+       ; For a name expression, lookup the metadata in the name's scope.
+       (lookup #'name)]
+
       [:stx/field-expr
+       ; For a field expression, resolve the left-hand side first.
        (match (resolve #'expr)
          [(meta/composite-port s)
+          ; If the lhs maps to a composite port, look up the given field name
+          ; in the target interface.
           (define/syntax-parse :stx/composite-port s)
           (meta/design-unit-ref (lookup #'intf-name meta/interface?) #'field-name)]
 
          [(meta/instance s)
+          ; If the lhs maps to an instance, look up the given field name
+          ; in the target component.
           (define/syntax-parse :stx/instance s)
           (meta/design-unit-ref (lookup #'comp-name meta/component?) #'field-name)]
 
@@ -88,9 +97,9 @@
       [_
        ; If stx has a static value, wrap it in a static-expr.
        ; If stx resolves to a signal, wrap it in a signal-expr.
-       (cond [(static-value? stx)             (quasisyntax/loc stx (static-expr #,stx))]
+       (cond [(static-value? stx)          (quasisyntax/loc stx (static-expr #,stx))]
              [(meta/signal? (resolve stx)) (quasisyntax/loc stx (signal-expr #,stx))]
-             [else                            stx])]))
+             [else                         stx])]))
 
   (define (lift-if-needed stx)
     (syntax-parse stx

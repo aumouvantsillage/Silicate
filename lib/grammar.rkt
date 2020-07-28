@@ -19,7 +19,6 @@ component: /"component" ID parameter-list? component-item* /"end"
 @interface-item:
   data-port |
   composite-port |
-  inline-composite-port |
   constant
 
 @component-item:
@@ -35,9 +34,9 @@ local-signal: /"let" ID /"=" expression
 
 data-port: /"port" ID /":" ("in" | "out") type-expression
 
-composite-port: /"port" ID multiplicity? /":" "flip"? ID argument-list?
+composite-port: /"port" ID multiplicity? /":" mode* ID argument-list?
 
-inline-composite-port: /"import" "flip"? ID argument-list?
+mode: "flip" | "splice"
 
 multiplicity: /"[" expression /"]"
 

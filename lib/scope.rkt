@@ -49,7 +49,7 @@
       ; If not found, find it in the given scope,
       ; looking up recursively in the parent scope chain.
       (unless sc
-        (raise-syntax-error #f "Unbound identifier" name))
+        (raise-syntax-error #f "No declaration found for identifier" name))
       (define res (dict-ref (scope-table sc) name
                     (λ () (lookup name pred (scope-parent sc)))))
       ; Check that the result satisfies the given predicate.

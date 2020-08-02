@@ -44,7 +44,7 @@ multiplicity: /"[" expression /"]"
 @argument-list: /"(" (expression /",")* expression? /")"
 
 assignment:
-  expression /"=" expression
+  simple-expr /"=" expression
 
 instance:
   /"instance" ID multiplicity? /"=" ID argument-list?
@@ -53,12 +53,12 @@ instance:
 
 ; TODO other expressions
 @expression:
-  or-expr
-  and-expr
-  rel-expr
-  add-expr
-  mult-expr
-  prefix-expr
+  or-expr |
+  and-expr |
+  rel-expr |
+  add-expr |
+  mult-expr |
+  prefix-expr |
   simple-expr
 
 or-expr:

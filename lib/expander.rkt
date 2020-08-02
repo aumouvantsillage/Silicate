@@ -4,7 +4,7 @@
   syntax/parse/define
   "signal.rkt"
   (for-syntax
-    (only-in racket empty identity in-syntax)
+    (only-in racket empty identity in-syntax match)
     racket/syntax
     syntax/parse/define
     (prefix-in stx/ "syntax-classes.rkt")))
@@ -26,8 +26,6 @@
   signal-expr
   static-expr
   lift-expr)
-
-; TODO provide
 
 (begin-for-syntax
   (define (channel-ctor-name name)
@@ -83,6 +81,14 @@
 (define-simple-macro (module body ...)
   (begin body ...))
 
+; Generate a provide clause only in a module context.
+(define-syntax-parser provide*
+  [(provide* spec ...)
+   (match (syntax-local-context)
+     ['module       #'(provide spec ...)]
+     ['module-begin #'(provide spec ...)]
+     [_             #'(begin)])])
+
 ; Generate a struct type and a constructor function from an interface.
 (define-syntax-parser interface
   [:stx/interface
@@ -92,17 +98,21 @@
    #:with (field-stx ...)  (design-unit-field-syntaxes  (attribute body))
    #:with (alias-stx ...)  (design-unit-aliases         (attribute body))
    #`(begin
+       (provide* (struct-out name) ctor-name)
        (struct name (field-name ...) #:transparent)
        (define (ctor-name param-name ...)
          (name (design-unit-field-ctor field-stx) ...))
        #,@(for/list ([i (in-list (attribute alias-stx))])
             (define/syntax-parse a:stx/alias i)
             ; For each alias, create an accessor in the current interface.
-            #`(define (#,(accessor-name #'name #'a.name) x)
-                ; Call the original accessor for the aliased field in the target interface...
-                (#,(accessor-name #'a.intf-name #'a.name)
-                  ; ... with the result of the accessor for the spliced composite port in the current interface.
-                  (#,(accessor-name #'name #'a.port-name) x)))))])
+            (define acc-name (accessor-name #'name #'a.name))
+            #`(begin
+                (provide* #,acc-name)
+                (define (#,acc-name x)
+                  ; Call the original accessor for the aliased field in the target interface...
+                  (#,(accessor-name #'a.intf-name #'a.name)
+                    ; ... with the result of the accessor for the spliced composite port in the current interface.
+                    (#,(accessor-name #'name #'a.port-name) x))))))])
 
 ; From a component, generate the same output as for an interface,
 ; and a function with the body of the component.
@@ -114,6 +124,7 @@
    #:with (stmt ...)       (design-unit-statements      (attribute body))
    #`(begin
        (interface name param ... body ...)
+       (provide* inst-ctor-name)
        (define (inst-ctor-name param-name ...)
          (define chan (chan-ctor-name param-name ...))
          #,@(for/list ([i (in-list (design-unit-field-names (attribute body)))])

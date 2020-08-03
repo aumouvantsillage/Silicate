@@ -30,16 +30,16 @@
             (data-port a in  (name-expr integer))
             (data-port b out (name-expr integer)))
           (component J
-            (composite-port c I)
-            (assignment (field-expr (name-expr c) b)
-                        (field-expr (name-expr c) a)))))
+            (composite-port i I)
+            (assignment (field-expr (name-expr i) b)
+                        (field-expr (name-expr i) a)))))
 
       (define j (make-instance-J))
-      (define j-c-a (static 10))
-      (set-box! (I-a (J-c j)) j-c-a)
+      (define j-i-a (static 10))
+      (set-box! (I-a (J-i j)) j-i-a)
 
-      (define j-c-b (unbox (I-b (J-c j))))
-      (check-equal? (signal-take j-c-b 5) (signal-take j-c-a 5)))
+      (define j-i-b (unbox (I-b (J-i j))))
+      (check-equal? (signal-take j-i-b 5) (signal-take j-i-a 5)))
 
     (test-case "Can resolve ports in indexed expressions"
       (begin-silicate

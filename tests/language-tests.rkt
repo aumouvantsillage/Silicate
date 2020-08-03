@@ -116,10 +116,56 @@
       (set-box! (I2-x (vector-ref (C10-i c) 0)) c-i-0-x)
       (set-box! (I2-x (vector-ref (C10-i c) 1)) c-i-1-x)
       (set-box! (I2-x (vector-ref (C10-i c) 2)) c-i-2-x)
-
       (define c-y (list->signal (list 0 1 2 1 0 2)))
       (set-box! (C10-y c) c-y)
-
       (define c-z-lst (list 10 20 30 20 10 30))
       (define c-z (unbox (C10-z c)))
-      (check-equal? (signal-take c-z (length c-z-lst)) c-z-lst))))
+      (check-equal? (signal-take c-z (length c-z-lst)) c-z-lst))
+
+    (test-case "Can instantiate a component"
+      (define c (make-instance-C12))
+      (define c-x (list->signal (list 10 20 30 40 50)))
+      (set-box! (C12-x c) c-x)
+      (define c-y (unbox (C12-y c)))
+      (check-equal? (signal-take c-y 5) (list 100 200 300 400 500)))
+
+    (test-case "Can instantiate a multiple component"
+      (define c (make-instance-C13))
+      (define c-x0 (list->signal (list 10 20 30 40 50)))
+      (define c-x1 (list->signal (list 1 2 3 4 5)))
+      (set-box! (C13-x0 c) c-x0)
+      (set-box! (C13-x1 c) c-x1)
+      (define c-y (unbox (C13-y c)))
+      (check-equal? (signal-take c-y 5) (list 110 220 330 440 550)))
+
+    (test-case "Can resolve ports in a spliced interface"
+      (define c (make-instance-C14))
+      (define c-x (static 10))
+      (set-box! (C14-x c) c-x)
+      (define c-y (unbox (C14-y c)))
+      (check-equal? (signal-take c-y 5) (signal-take c-x 5)))
+
+    (test-case "Can resolve ports in a hierarchy from a spliced interface"
+      (define c (make-instance-C15))
+      (define c-i-0-x (static 10))
+      (define c-i-1-x (static 20))
+      (set-box! (I0-x (vector-ref (C15-i c) 0)) c-i-0-x)
+      (set-box! (I0-x (vector-ref (C15-i c) 1)) c-i-1-x)
+      (define c-i-0-y (unbox (I0-y (vector-ref (C15-i c) 0))))
+      (define c-i-1-y (unbox (I0-y (vector-ref (C15-i c) 1))))
+      (check-equal? (signal-take c-i-0-y 5) (signal-take c-i-0-x 5))
+      (check-equal? (signal-take c-i-1-y 5) (signal-take c-i-1-x 5)))
+
+    (test-case "Can resolve ports in an interface with a spliced composite port"
+      (define c (make-instance-C16))
+      (define c-x (static 10))
+      (set-box! (I3-x (C16-j c)) c-x)
+      (define c-y (unbox (I3-y (C16-j c))))
+      (check-equal? (signal-take c-y 5) (signal-take c-x 5)))
+
+    (test-case "Can resolve ports in a doubly spliced composite port"
+      (define c (make-instance-C17))
+      (define c-x (static 10))
+      (set-box! (C17-x c) c-x)
+      (define c-y (unbox (C17-y c)))
+      (check-equal? (signal-take c-y 5) (signal-take c-x 5)))))

@@ -37,7 +37,7 @@ data-port: /"port" ID /":" ("in" | "out") type-expression
 
 composite-port: /"port" ID multiplicity? /":" mode* ID argument-list?
 
-mode: "flip" | "splice"
+@mode: "flip" | "splice"
 
 multiplicity: /"[" expression /"]"
 

@@ -88,3 +88,52 @@ component C10
   port z : out integer
   z = i[y].x
 end
+
+component C11(N : integer)
+  port x : in integer
+  port y : out integer
+  y = x * N
+end
+
+component C12
+  port x : in integer
+  port y : out integer
+  instance c = C11(10)
+  c.x = x
+  y = c.y
+end
+
+component C13
+  port x0 : in integer
+  port x1 : in integer
+  port y : out integer
+  instance c[2] = C11(10)
+  c[0].x = x0
+  c[1].x = x1
+  y = c[0].y + c[1].y
+end
+
+component C14
+  port i : splice I0
+  y = x
+end
+
+component C15
+  port j : splice I1
+  i[0].y = i[0].x
+  i[1].y = i[1].x
+end
+
+interface I3
+  port i : splice I0
+end
+
+component C16
+  port j : I3
+  j.y = j.x
+end
+
+component C17
+  port j : splice I3
+  y = x
+end

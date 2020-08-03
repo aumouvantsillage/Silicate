@@ -1,79 +1,90 @@
 #lang silicate
 
-component Cab
-  port a : in integer
-  port b : out integer
-  b = a
+component C0
+  port x : in integer
+  port y : out integer
+  y = x
 end
 
-interface Iab
-  port a : in integer
-  port b : out integer
+interface I0
+  port x : in integer
+  port y : out integer
 end
 
-component CIab
-  port i : Iab
-  i.b = i.a
+component C1
+  port i : I0
+  i.y = i.x
 end
 
-component CIab2
-  port i[2] : Iab
-  i[0].b = i[0].a
-  i[1].b = i[1].a
+component C2
+  port i[2] : I0
+  i[0].y = i[0].x
+  i[1].y = i[1].x
 end
 
-interface IIab2
-  port i[2] : Iab
+interface I1
+  port i[2] : I0
 end
 
-component CIIab2
-  port j[2] : IIab2
-  j[0].i[0].b = j[0].i[0].a
-  j[0].i[1].b = j[0].i[1].a
-  j[1].i[0].b = j[1].i[0].a
-  j[1].i[1].b = j[1].i[1].a
+component C3
+  port j[2] : I1
+  j[0].i[0].y = j[0].i[0].x
+  j[0].i[1].y = j[0].i[1].x
+  j[1].i[0].y = j[1].i[0].x
+  j[1].i[1].y = j[1].i[1].x
 end
 
-component Cal
-  port a : out integer
-  a = 10
+component C4
+  port x : out integer
+  x = 10
 end
 
-component Cac
-  port a : out integer
+component C5
+  port x : out integer
   constant k = 10
-  a = k
+  x = k
 end
 
-component Cas
-  port a : out integer
+component C6
+  port x : out integer
   constant k = 10
-  a = k + 1
+  x = k + 1
 end
 
-component Cabc
-  port a : in integer
-  port b : in integer
-  port c : out integer
-  c = a + b
+component C7
+  port x : in integer
+  port y : in integer
+  port z : out integer
+  z = x + y
 end
 
-component Cabcde
-  port a : in integer
-  port b : in integer
-  port c : in integer
-  port d : in integer
-  port e : out integer
-  e = a * b + c * d
+component C8
+  port x : in integer
+  port y : in integer
+  port z : in integer
+  port u : in integer
+  port v : out integer
+  v = x * y + z * u
 end
 
-component Cabcdel
-  port a : in integer
-  port b : in integer
-  port c : in integer
-  port d : in integer
-  port e : out integer
-  let ab = a * b
-  let cd = c * d
-  e = ab + cd
+component C9
+  port x : in integer
+  port y : in integer
+  port z : in integer
+  port u : in integer
+  port v : out integer
+  let xy = x * y
+  let zu = z * u
+  v = xy + zu
+end
+
+interface I2
+  port x : in integer
+end
+
+component C10
+  port i[3] : I2
+  port y : in integer
+  port z : out integer
+  z = i[y].x
 end

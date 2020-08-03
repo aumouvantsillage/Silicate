@@ -27,12 +27,48 @@
 
     (test-case "Can resolve ports in indexed expressions"
       (define c (make-instance-CIab2))
-      (define c-i-a-0 (static 10))
-      (define c-i-a-1 (static 20))
-      (set-box! (Iab-a (vector-ref (CIab2-i c) 0)) c-i-a-0)
-      (set-box! (Iab-a (vector-ref (CIab2-i c) 1)) c-i-a-1)
+      (define c-i-0-a (static 10))
+      (define c-i-1-a (static 20))
+      (set-box! (Iab-a (vector-ref (CIab2-i c) 0)) c-i-0-a)
+      (set-box! (Iab-a (vector-ref (CIab2-i c) 1)) c-i-1-a)
 
-      (define c-i-b-0 (unbox (Iab-b (vector-ref (CIab2-i c) 0))))
-      (define c-i-b-1 (unbox (Iab-b (vector-ref (CIab2-i c) 1))))
-      (check-equal? (signal-take c-i-b-0 5) (signal-take c-i-a-0 5))
-      (check-equal? (signal-take c-i-b-1 5) (signal-take c-i-a-1 5)))))
+      (define c-i-0-b (unbox (Iab-b (vector-ref (CIab2-i c) 0))))
+      (define c-i-1-b (unbox (Iab-b (vector-ref (CIab2-i c) 1))))
+      (check-equal? (signal-take c-i-0-b 5) (signal-take c-i-0-a 5))
+      (check-equal? (signal-take c-i-1-b 5) (signal-take c-i-1-a 5)))
+
+    (test-case "Can resolve ports in a hierarchy of expressions"
+      (define c (make-instance-CIIab2))
+      (define c-j-0-i-0-a (static 10))
+      (define c-j-0-i-1-a (static 20))
+      (define c-j-1-i-0-a (static 30))
+      (define c-j-1-i-1-a (static 40))
+      (set-box! (Iab-a (vector-ref (IIab2-i (vector-ref (CIIab2-j c) 0)) 0)) c-j-0-i-0-a)
+      (set-box! (Iab-a (vector-ref (IIab2-i (vector-ref (CIIab2-j c) 0)) 1)) c-j-0-i-1-a)
+      (set-box! (Iab-a (vector-ref (IIab2-i (vector-ref (CIIab2-j c) 1)) 0)) c-j-1-i-0-a)
+      (set-box! (Iab-a (vector-ref (IIab2-i (vector-ref (CIIab2-j c) 1)) 1)) c-j-1-i-1-a)
+
+      (define c-j-0-i-0-b (unbox (Iab-b (vector-ref (IIab2-i (vector-ref (CIIab2-j c) 0)) 0))))
+      (define c-j-0-i-1-b (unbox (Iab-b (vector-ref (IIab2-i (vector-ref (CIIab2-j c) 0)) 1))))
+      (define c-j-1-i-0-b (unbox (Iab-b (vector-ref (IIab2-i (vector-ref (CIIab2-j c) 1)) 0))))
+      (define c-j-1-i-1-b (unbox (Iab-b (vector-ref (IIab2-i (vector-ref (CIIab2-j c) 1)) 1))))
+
+      (check-equal? (signal-take c-j-0-i-0-b 5) (signal-take c-j-0-i-0-a 5))
+      (check-equal? (signal-take c-j-0-i-1-b 5) (signal-take c-j-0-i-1-a 5))
+      (check-equal? (signal-take c-j-1-i-0-b 5) (signal-take c-j-1-i-0-a 5))
+      (check-equal? (signal-take c-j-1-i-1-b 5) (signal-take c-j-1-i-1-a 5)))
+
+    (test-case "Can assign a literal to a signal"
+      (define c (make-instance-Cal))
+      (define c-a (unbox (Cal-a c)))
+      (check-equal? (signal-take c-a 5) (signal-take (static 10) 5)))
+
+    (test-case "Can assign a constant to a signal"
+      (define c (make-instance-Cac))
+      (define c-a (unbox (Cac-a c)))
+      (check-equal? (signal-take c-a 5) (signal-take (static 10) 5)))
+
+    (test-case "Can assign a static expression to a signal"
+      (define c (make-instance-Cas))
+      (define c-a (unbox (Cas-a c)))
+      (check-equal? (signal-take c-a 5) (signal-take (static 11) 5)))))

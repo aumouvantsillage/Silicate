@@ -28,7 +28,7 @@ component: /"component" ID parameter-list? component-item* /"end"
 
 parameter: ID /":" ("type" | type-expression)
 
-constant: /"const" ID /"=" expression
+constant: /"constant" ID /"=" expression
 
 local-signal: /"let" ID /"=" expression
 
@@ -52,32 +52,21 @@ instance:
 ; Expressions ------------------------------------------------------------------
 
 ; TODO other expressions
-@expression:
-  or-expr |
-  and-expr |
-  rel-expr |
-  add-expr |
-  mult-expr |
-  prefix-expr |
-  simple-expr
+@expression: maybe-or-expr
 
-or-expr:
-  (or-expr | and-expr) "or" and-expr
+@maybe-or-expr:     or-expr     | maybe-and-expr
+@maybe-and-expr:    and-expr    | maybe-rel-expr
+@maybe-rel-expr:    rel-expr    | maybe-add-expr
+@maybe-add-expr:    add-expr    | maybe-mult-expr
+@maybe-mult-expr:   mult-expr   | maybe-prefix-expr
+@maybe-prefix-expr: prefix-expr | simple-expr
 
-and-expr:
-  (and-expr | rel-expr) "and" rel-expr
-
-rel-expr:
-  (rel-expr | add-expr) ("<" | ">" | "<=" | ">=" | "==" | "/=") add-expr
-
-add-expr:
-  (add-expr | mult-expr) ("+" | "-") mult-expr
-
-mult-expr:
-  (mult-expr | prefix-expr) ("*" | "/") prefix-expr
-
-prefix-expr:
-  ("-" | "not") simple-expr
+or-expr:     maybe-or-expr  "or" maybe-and-expr
+and-expr:    maybe-and-expr "and" maybe-rel-expr
+rel-expr:    maybe-rel-expr ("<" | ">" | "<=" | ">=" | "==" | "/=") maybe-add-expr
+add-expr:    maybe-add-expr ("+" | "-") maybe-mult-expr
+mult-expr:   maybe-mult-expr ("*" | "/") maybe-prefix-expr
+prefix-expr: ("-" | "not") simple-expr
 
 @simple-expr:
   literal-expr |

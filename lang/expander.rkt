@@ -5,7 +5,8 @@
 (provide
   (all-from-out silicate)
   (rename-out [silicate-module-begin #%module-begin])
-  #%datum)
+  ; TODO export more operators and functions from racket
+  #%datum + - * /)
 
 (define-syntax-rule (silicate-module-begin form ...)
   (#%module-begin

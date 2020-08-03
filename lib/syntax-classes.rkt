@@ -90,9 +90,9 @@
 (define-syntax-class call-expr
   #:datum-literals [or-expr and-expr rel-expr add-expr mult-expr call-expr prefix-expr]
   (pattern ((~or* or-expr and-expr rel-expr add-expr mult-expr) left fn-name right)
-    #:attr (arg 1) #'(left right))
+    #:attr (arg 1) (list #'left #'right))
   (pattern (prefix-expr fn-name right)
-    #:attr (arg 1) #'(right))
+    #:attr (arg 1) (list #'right))
   (pattern (call-expr fn-name arg ...)))
 
 (define-syntax-class lift-expr

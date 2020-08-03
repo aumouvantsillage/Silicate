@@ -71,4 +71,26 @@
     (test-case "Can assign a static expression to a signal"
       (define c (make-instance-Cas))
       (define c-a (unbox (Cas-a c)))
-      (check-equal? (signal-take c-a 5) (signal-take (static 11) 5)))))
+      (check-equal? (signal-take c-a 5) (signal-take (static 11) 5)))
+
+    (test-case "Can lift an operation"
+      (define c (make-instance-Cabc))
+      (define c-a (list->signal (list 10 20 30)))
+      (define c-b (list->signal (list 40 50 60)))
+      (set-box! (Cabc-a c) c-a)
+      (set-box! (Cabc-b c) c-b)
+      (define c-c (unbox (Cabc-c c)))
+      (check-equal? (signal-take c-c 5) (map + (signal-take c-a 5) (signal-take c-b 5))))
+
+    (test-case "Can lift nested calls"
+      (define c (make-instance-Cabcde))
+      (define c-a (list->signal (list 10 20 30 40 50)))
+      (define c-b (static 2))
+      (define c-c (list->signal (list 1 2 3 4 5)))
+      (define c-d (static 3))
+      (set-box! (Cabcde-a c) c-a)
+      (set-box! (Cabcde-b c) c-b)
+      (set-box! (Cabcde-c c) c-c)
+      (set-box! (Cabcde-d c) c-d)
+      (define c-e (unbox (Cabcde-e c)))
+      (check-equal? (signal-take c-e 5) (list 23 46 69 92 115)))))

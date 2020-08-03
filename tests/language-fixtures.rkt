@@ -50,3 +50,19 @@ component Cas
   constant k = 10
   a = k + 1
 end
+
+component Cabc
+  port a : in integer
+  port b : in integer
+  port c : out integer
+  c = a + b
+end
+
+component Cabcde
+  port a : in integer
+  port b : in integer
+  port c : in integer
+  port d : in integer
+  port e : out integer
+  e = a * b + c * d
+end

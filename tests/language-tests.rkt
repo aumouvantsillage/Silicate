@@ -93,4 +93,17 @@
       (set-box! (Cabcde-c c) c-c)
       (set-box! (Cabcde-d c) c-d)
       (define c-e (unbox (Cabcde-e c)))
+      (check-equal? (signal-take c-e 5) (list 23 46 69 92 115)))
+
+    (test-case "Can use local signals"
+      (define c (make-instance-Cabcdel))
+      (define c-a (list->signal (list 10 20 30 40 50)))
+      (define c-b (static 2))
+      (define c-c (list->signal (list 1 2 3 4 5)))
+      (define c-d (static 3))
+      (set-box! (Cabcdel-a c) c-a)
+      (set-box! (Cabcdel-b c) c-b)
+      (set-box! (Cabcdel-c c) c-c)
+      (set-box! (Cabcdel-d c) c-d)
+      (define c-e (unbox (Cabcdel-e c)))
       (check-equal? (signal-take c-e 5) (list 23 46 69 92 115)))))

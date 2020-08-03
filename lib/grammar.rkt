@@ -23,6 +23,7 @@ component: /"component" ID parameter-list? component-item* /"end"
 
 @component-item:
   interface-item |
+  local-signal |
   assignment |
   instance
 

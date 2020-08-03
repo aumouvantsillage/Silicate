@@ -66,3 +66,14 @@ component Cabcde
   port e : out integer
   e = a * b + c * d
 end
+
+component Cabcdel
+  port a : in integer
+  port b : in integer
+  port c : in integer
+  port d : in integer
+  port e : out integer
+  let ab = a * b
+  let cd = c * d
+  e = ab + cd
+end

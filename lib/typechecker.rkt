@@ -27,7 +27,7 @@
         [:stx/assignment   (typecheck-assignment stx (typecheck #'target) (typecheck #'expr))]
         [:stx/field-expr   (typecheck-field-expr stx (typecheck #'expr) #'field-name)]
         [:stx/indexed-expr (typecheck-indexed-expr stx (typecheck #'expr) (typecheck* #'(index ...)))]
-        [:stx/call-expr    (typecheck-call-expr stx #'fn-name (typecheck* #'(arg ...)))]
+        [:stx/call-expr    (typecheck-call-expr stx (attribute fn-name) (typecheck* #'(arg ...)))]
         [_                 (typecheck* stx)])))
 
   ; Find the metadata of the given expression result.

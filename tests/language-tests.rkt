@@ -143,4 +143,12 @@
       (define c (make-instance-C17))
       (define x (static 10))
       (port-set! (c C17-x) x)
-      (check-sig-equal? (port-ref c C17-y) x 5))))
+      (check-sig-equal? (port-ref c C17-y) x 5))
+
+    (test-case "Can compute a conditional signal"
+      (define c (make-instance-C18))
+      (define x (list->signal (list 10 20  30 40 50)))
+      (define y (list->signal (list 1  200 300 4 5)))
+      (port-set! (c C18-x) x)
+      (port-set! (c C18-y) y)
+      (check-sig-equal? (port-ref c C18-z) ((lift max) x y) 5))))

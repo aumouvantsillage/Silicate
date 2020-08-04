@@ -137,3 +137,10 @@ component C17
   port j : splice I3
   y = x
 end
+
+component C18
+  port x : in integer
+  port y : in integer
+  port z : out integer
+  z = if x > y then x else y
+end

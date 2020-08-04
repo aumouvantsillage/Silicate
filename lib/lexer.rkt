@@ -13,6 +13,7 @@
             "type" "port" "in" "out" "flip" "splice"
             "constant" "instance" "let"
             "or" "and" "not" ">=" "<=" "==" "/="
+            "if" "then" "else"
             (char-set ".:,()[]=+-*/<>"))
        (token lexeme (string->symbol lexeme))]
       [(:seq alphabetic (:* (:or alphabetic numeric)))

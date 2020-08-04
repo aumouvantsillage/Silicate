@@ -74,6 +74,7 @@ prefix-expr: ("-" | "not") simple-expr
   name-expr |
   field-expr |
   indexed-expr |
+  if-expr |
   call-expr |
   /"(" expression /")"
 
@@ -86,6 +87,9 @@ field-expr:
 
 indexed-expr:
   simple-expr /"[" expression ("," expression)* ","? /"]"
+
+if-expr:
+  /"if" expression /"then" expression /"else" expression
 
 call-expr:
   ID /"(" (expression /",")* expression? /")"

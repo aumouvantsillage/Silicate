@@ -7,23 +7,22 @@
 
 (provide language-tests)
 
+(define (check-port-equal? t e n)
+  (define e^ (if (box? e) (unbox e) e))
+  (check-equal? (signal-take (unbox t) n) (signal-take e^ n)))
+
 (define language-tests
   (test-suite "Language"
     (test-case "Can label simple signal expressions"
       (define c (make-instance-C0))
-      (define c-x (static 10))
-      (set-box! (C0-x c) c-x)
-
-      (define c-y (unbox (C0-y c)))
-      (check-equal? (signal-take c-y 5) (signal-take c-x 5)))
+      (set-box! (C0-x c) (static 10))
+      (check-port-equal? (C0-y c) (C0-x c) 5))
 
     (test-case "Can resolve ports in field expressions"
       (define c (make-instance-C1))
-      (define c-i-x (static 10))
-      (set-box! (I0-x (C1-i c)) c-i-x)
-
-      (define c-i-y (unbox (I0-y (C1-i c))))
-      (check-equal? (signal-take c-i-y 5) (signal-take c-i-x 5)))
+      (define i (C1-i c))
+      (set-box! (I0-x i) (static 10))
+      (check-port-equal? (I0-y i) (I0-x i) 5))
 
     (test-case "Can resolve ports in indexed expressions"
       (define c (make-instance-C2))
@@ -31,7 +30,6 @@
       (define c-i-1-x (static 20))
       (set-box! (I0-x (vector-ref (C2-i c) 0)) c-i-0-x)
       (set-box! (I0-x (vector-ref (C2-i c) 1)) c-i-1-x)
-
       (define c-i-0-y (unbox (I0-y (vector-ref (C2-i c) 0))))
       (define c-i-1-y (unbox (I0-y (vector-ref (C2-i c) 1))))
       (check-equal? (signal-take c-i-0-y 5) (signal-take c-i-0-x 5))
@@ -47,12 +45,10 @@
       (set-box! (I0-x (vector-ref (I1-i (vector-ref (C3-j c) 0)) 1)) c-j-0-i-1-x)
       (set-box! (I0-x (vector-ref (I1-i (vector-ref (C3-j c) 1)) 0)) c-j-1-i-0-x)
       (set-box! (I0-x (vector-ref (I1-i (vector-ref (C3-j c) 1)) 1)) c-j-1-i-1-x)
-
       (define c-j-0-i-0-y (unbox (I0-y (vector-ref (I1-i (vector-ref (C3-j c) 0)) 0))))
       (define c-j-0-i-1-y (unbox (I0-y (vector-ref (I1-i (vector-ref (C3-j c) 0)) 1))))
       (define c-j-1-i-0-y (unbox (I0-y (vector-ref (I1-i (vector-ref (C3-j c) 1)) 0))))
       (define c-j-1-i-1-y (unbox (I0-y (vector-ref (I1-i (vector-ref (C3-j c) 1)) 1))))
-
       (check-equal? (signal-take c-j-0-i-0-y 5) (signal-take c-j-0-i-0-x 5))
       (check-equal? (signal-take c-j-0-i-1-y 5) (signal-take c-j-0-i-1-x 5))
       (check-equal? (signal-take c-j-1-i-0-y 5) (signal-take c-j-1-i-0-x 5))
@@ -60,18 +56,15 @@
 
     (test-case "Can assign a literal to a signal"
       (define c (make-instance-C4))
-      (define c-x (unbox (C4-x c)))
-      (check-equal? (signal-take c-x 5) (signal-take (static 10) 5)))
+      (check-port-equal? (C4-x c) (static 10) 5))
 
     (test-case "Can assign a constant to a signal"
       (define c (make-instance-C5))
-      (define c-x (unbox (C5-x c)))
-      (check-equal? (signal-take c-x 5) (signal-take (static 10) 5)))
+      (check-port-equal? (C5-x c) (static 10) 5))
 
     (test-case "Can assign a static expression to a signal"
       (define c (make-instance-C6))
-      (define c-x (unbox (C6-x c)))
-      (check-equal? (signal-take c-x 5) (signal-take (static 11) 5)))
+      (check-port-equal? (C6-x c) (static 11) 5))
 
     (test-case "Can lift an operation"
       (define c (make-instance-C7))
@@ -140,10 +133,8 @@
 
     (test-case "Can resolve ports in a spliced interface"
       (define c (make-instance-C14))
-      (define c-x (static 10))
-      (set-box! (C14-x c) c-x)
-      (define c-y (unbox (C14-y c)))
-      (check-equal? (signal-take c-y 5) (signal-take c-x 5)))
+      (set-box! (C14-x c) (static 10))
+      (check-port-equal? (C14-y c) (C14-x c) 5))
 
     (test-case "Can resolve ports in a hierarchy from a spliced interface"
       (define c (make-instance-C15))
@@ -158,14 +149,11 @@
 
     (test-case "Can resolve ports in an interface with a spliced composite port"
       (define c (make-instance-C16))
-      (define c-x (static 10))
-      (set-box! (I3-x (C16-j c)) c-x)
-      (define c-y (unbox (I3-y (C16-j c))))
-      (check-equal? (signal-take c-y 5) (signal-take c-x 5)))
+      (define j (C16-j c))
+      (set-box! (I3-x j) (static 10))
+      (check-port-equal? (I3-y j) (I3-x j) 5))
 
     (test-case "Can resolve ports in a doubly spliced composite port"
       (define c (make-instance-C17))
-      (define c-x (static 10))
-      (set-box! (C17-x c) c-x)
-      (define c-y (unbox (C17-y c)))
-      (check-equal? (signal-take c-y 5) (signal-take c-x 5)))))
+      (set-box! (C17-x c) (static 10))
+      (check-port-equal? (C17-y c) (C17-x c) 5))))

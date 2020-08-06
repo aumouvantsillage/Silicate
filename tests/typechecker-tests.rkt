@@ -138,12 +138,17 @@
       (assignment (name-expr y) (name-expr x)))
 
     (component C18
-      (data-port x in integer)
-      (data-port y in integer)
-      (data-port z out integer)
+      (data-port x in (name-expr integer))
+      (data-port y in (name-expr integer))
+      (data-port z out (name-expr integer))
       (assignment (name-expr z) (call-expr if (call-expr > (name-expr x) (name-expr y))
                                   (name-expr x)
-                                  (name-expr y))))))
+                                  (name-expr y))))
+
+    (component C19
+      (data-port x in (name-expr integer))
+      (data-port y out (name-expr integer))
+      (assignment (name-expr y) (register-expr 0 x)))))
 
 (define typechecker-tests
   (test-suite "Typechecker"
@@ -287,4 +292,10 @@
       (define y (list->signal (list 1  200 300 4 5)))
       (port-set! (c C18-x) x)
       (port-set! (c C18-y) y)
-      (check-sig-equal? (port-ref c C18-z) ((lift max) x y) 5))))
+      (check-sig-equal? (port-ref c C18-z) ((lift max) x y) 5))
+
+    (test-case "Can register a signal"
+      (define c (make-instance-C19))
+      (define x (list->signal (list 10 20  30 40 50)))
+      (port-set! (c C19-x) x)
+      (check-sig-equal? (port-ref c C19-y) (register 0 x) 6))))

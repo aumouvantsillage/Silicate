@@ -87,6 +87,15 @@
   #:datum-literals [indexed-expr]
   (pattern (indexed-expr expr index ...)))
 
+(define-syntax-class register-expr
+  #:datum-literals [register-expr]
+  (pattern (register-expr init-expr (~optional init-cond:when-clause)
+                          update-expr (~optional update-cond:when-clause))))
+
+(define-syntax-class when-clause
+  #:datum-literals [when-clause]
+  (pattern (when-clause expr)))
+  
 (define-syntax-class call-expr
   #:datum-literals [or-expr and-expr rel-expr add-expr mult-expr if-expr call-expr prefix-expr]
   (pattern ((~or* or-expr and-expr rel-expr add-expr mult-expr) left fn-name right)

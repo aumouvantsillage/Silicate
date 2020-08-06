@@ -23,6 +23,7 @@
   field-expr
   indexed-expr
   call-expr
+  register-expr
   signal-expr
   static-expr
   lift-expr)
@@ -192,6 +193,10 @@
 
 (define-simple-macro (call-expr fn-name arg ...)
   (fn-name arg ...))
+
+(define-syntax-parser register-expr
+  [(register-expr a b)
+   #'(register a b)])
 
 ; A signal expression is a wrapper element added by the typechecker
 ; to identify an expression that refers to a port or local signal

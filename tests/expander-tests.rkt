@@ -2,7 +2,8 @@
 
 (require
   rackunit
-  silicate)
+  silicate
+  "helpers.rkt")
 
 (provide expander-tests)
 
@@ -359,4 +360,15 @@
       (set-box! (D-y d) d-y)
       (define d-z (unbox (D-z d)))
 
-      (check-equal? (signal-take d-z 5) (list 110 220 330 440 550)))))
+      (check-equal? (signal-take d-z 5) (list 110 220 330 440 550)))
+
+    (test-case "Can register a signal"
+      (component C19
+        (data-port x in #f)
+        (data-port y out #f)
+        (assignment (name-expr y) (register-expr 0 (signal-expr x))))
+
+      (define c (make-instance-C19))
+      (define x (list->signal (list 10 20  30 40 50)))
+      (port-set! (c C19-x) x)
+      (check-sig-equal? (port-ref c C19-y) (register 0 x) 6))))

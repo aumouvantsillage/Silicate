@@ -22,13 +22,18 @@
     (with-lookup-cache
       ; TODO inline composite ports
       (syntax-parse stx
-        [:stx/constant     (typecheck-constant stx #'name (typecheck #'expr))]
-        [:stx/local-signal (typecheck-local-signal stx #'name (typecheck #'expr))]
-        [:stx/assignment   (typecheck-assignment stx (typecheck #'target) (typecheck #'expr))]
-        [:stx/field-expr   (typecheck-field-expr stx (typecheck #'expr) #'field-name)]
-        [:stx/indexed-expr (typecheck-indexed-expr stx (typecheck #'expr) (typecheck* #'(index ...)))]
-        [:stx/call-expr    (typecheck-call-expr stx (attribute fn-name) (typecheck* #'(arg ...)))]
-        [_                 (typecheck* stx)])))
+        [:stx/constant      (typecheck-constant stx #'name (typecheck #'expr))]
+        [:stx/local-signal  (typecheck-local-signal stx #'name (typecheck #'expr))]
+        [:stx/assignment    (typecheck-assignment stx (typecheck #'target) (typecheck #'expr))]
+        [:stx/field-expr    (typecheck-field-expr stx (typecheck #'expr) #'field-name)]
+        [:stx/indexed-expr  (typecheck-indexed-expr stx (typecheck #'expr) (typecheck* #'(index ...)))]
+        [:stx/register-expr (typecheck-register-expr stx (typecheck #'init-expr)
+                                                         (and (attribute init-cond) (typecheck #'init-cond))
+                                                         (typecheck #'update-expr)
+                                                         (and (attribute update-cond) (typecheck #'update-cond)))]
+        [:stx/when-clause   (typecheck-when-clause stx (typecheck #'expr))]
+        [:stx/call-expr     (typecheck-call-expr stx (attribute fn-name) (typecheck* #'(arg ...)))]
+        [_                  (typecheck* stx)])))
 
   ; Find the metadata of the given expression result.
   (define (resolve stx)
@@ -60,7 +65,7 @@
 
   (define (typecheck-constant stx name expr)
     (unless (static-value? expr)
-      (raise-syntax-error #f "Non-static value cannot be assigned to constant" expr))
+      (raise-syntax-error #f "Non-static expression cannot be assigned to constant" expr))
     ; TODO check expression type
     (quasisyntax/loc stx
       (constant #,name #,expr)))
@@ -175,4 +180,15 @@
     ; TODO check that fn-name is bound or built-in
     ; TODO typecheck arguments against fn
     (quasisyntax/loc stx
-      (call-expr #,fn-name #,@args))))
+      (call-expr #,fn-name #,@args)))
+
+  (define (typecheck-register-expr stx init-expr init-cond update-expr update-cond)
+    (unless (static-value? init-expr)
+      (raise-syntax-error #f "Non-static expression cannot be used as an initial register value" init-expr))
+    (define args (filter identity (list init-expr init-cond (typecheck-assigned-expr update-expr) update-cond)))
+    (quasisyntax/loc stx
+      (register-expr #,@args)))
+
+  (define (typecheck-when-clause stx expr)
+    (quasisyntax/loc stx
+      (when-clause #,(typecheck-assigned-expr expr)))))

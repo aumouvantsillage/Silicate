@@ -147,7 +147,29 @@
     (component C19
       (data-port x in (name-expr integer))
       (data-port y out (name-expr integer))
-      (assignment (name-expr y) (register-expr 0 x)))))
+      (assignment (name-expr y) (register-expr (literal-expr 0) (name-expr x))))
+
+    (component C20
+      (data-port x in #f)
+      (data-port y in #f)
+      (data-port z out #f)
+      (assignment (name-expr z) (register-expr (literal-expr 0) (when-clause (name-expr x))
+                                               (name-expr y))))
+
+    (component C21
+      (data-port x in #f)
+      (data-port y in #f)
+      (data-port z out #f)
+      (assignment (name-expr z) (register-expr (literal-expr 0)
+                                               (name-expr y) (when-clause (name-expr x)))))
+
+    (component C22
+      (data-port x in #f)
+      (data-port y in #f)
+      (data-port z in #f)
+      (data-port u out #f)
+      (assignment (name-expr u) (register-expr (literal-expr 0) (when-clause (name-expr x))
+                                               (name-expr z) (when-clause (name-expr y)))))))
 
 (define typechecker-tests
   (test-suite "Typechecker"
@@ -297,4 +319,30 @@
       (define c (make-instance-C19))
       (define x (list->signal (list 10 20  30 40 50)))
       (port-set! (c C19-x) x)
-      (check-sig-equal? (port-ref c C19-y) (register 0 x) 6))))
+      (check-sig-equal? (port-ref c C19-y) (register 0 x) 6))
+
+    (test-case "Can register a signal with reset"
+      (define c (make-instance-C20))
+      (define x (list->signal (list #f #f  #f #t #f)))
+      (define y (list->signal (list 10 20  30 40 50)))
+      (port-set! (c C20-x) x)
+      (port-set! (c C20-y) y)
+      (check-sig-equal? (port-ref c C20-z) (register/r 0 x y) 6))
+
+    (test-case "Can register a signal with enable"
+      (define c (make-instance-C21))
+      (define x (list->signal (list #f #t  #f #t #f)))
+      (define y (list->signal (list 10 20  30 40 50)))
+      (port-set! (c C21-x) x)
+      (port-set! (c C21-y) y)
+      (check-sig-equal? (port-ref c C21-z) (register/e 0 x y) 6))
+
+    (test-case "Can register a signal with reset and enable"
+      (define c (make-instance-C22))
+      (define x (list->signal (list #f #t  #f #t #f)))
+      (define y (list->signal (list #f #f  #t #f #f)))
+      (define z (list->signal (list 10 20  30 40 50)))
+      (port-set! (c C22-x) x)
+      (port-set! (c C22-y) y)
+      (port-set! (c C22-z) z)
+      (check-sig-equal? (port-ref c C22-u) (register/re 0 x y z) 6))))

@@ -3,7 +3,6 @@
 (require
   rackunit
   silicate
-  silicate/lib/std
   "helpers.rkt")
 
 (provide typechecker-tests)

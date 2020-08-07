@@ -7,368 +7,292 @@
 
 (provide expander-tests)
 
+(interface I0
+  (parameter N #f)
+  (data-port x in  #f)
+  (data-port y out #f))
+
+(component C0
+  (parameter N #f)
+  (data-port x in  #f)
+  (data-port y out #f)
+  (assignment (name-expr y) (signal-expr (name-expr x))))
+
+(interface I1
+  (composite-port i I0)
+  (data-port z in #f))
+
+(component C1
+  (composite-port i I0)
+  (data-port z in #f)
+  (assignment (field-expr (name-expr i) y I0) (signal-expr (field-expr (name-expr i) x I0))))
+
+(interface I2
+  (data-port x in #f)
+  (data-port y out #f))
+
+(interface I3
+  (data-port z in #f)
+  (composite-port i I2)  (data-port u out #f))
+
+(interface I4
+  (data-port v in #f)
+  (composite-port j I3)
+  (data-port w out #f))
+
+(component C2
+  (data-port v in #f)
+  (composite-port j I3)
+  (data-port w out #f)
+  (assignment (name-expr w) (signal-expr (name-expr v))))
+
+(interface I5
+  (composite-port i (multiplicity 3) I2))
+
+(interface I6
+  (parameter N #f)
+  (composite-port i (multiplicity (name-expr N)) I2))
+
+(interface I7
+  (parameter M #f)
+  (composite-port j I6 (name-expr M)))
+
+(component C3
+  (composite-port i I2)
+  (assignment (field-expr (name-expr i) y I2)
+              (signal-expr (field-expr (name-expr i) x I2))))
+
+(component C4
+  (composite-port i (multiplicity 3) I2)
+  (assignment (field-expr (indexed-expr (name-expr i) (literal-expr 0)) y I2)
+              (signal-expr (field-expr (indexed-expr (name-expr i) (literal-expr 0)) x I2)))
+  (assignment (field-expr (indexed-expr (name-expr i) (literal-expr 1)) y I2)
+              (signal-expr (field-expr (indexed-expr (name-expr i) (literal-expr 1)) x I2)))
+  (assignment (field-expr (indexed-expr (name-expr i) (literal-expr 2)) y I2)
+              (signal-expr (field-expr (indexed-expr (name-expr i) (literal-expr 2)) x I2))))
+
+(interface I8
+  (data-port x in (name-expr integer)))
+
+(component C5
+  (composite-port i (multiplicity (literal-expr 3)) I8)
+  (data-port y in (name-expr integer))
+  (data-port z out (name-expr integer))
+  (assignment (name-expr z)
+              (lift-expr [y^ (signal-expr (name-expr y))]
+                         (signal-expr (field-expr (indexed-expr (name-expr i) (name-expr y^)) x I8)))))
+
+(component C6
+  (data-port x in #f)
+  (data-port y in #f)
+  (data-port z out #f)
+  (assignment (name-expr z)
+              (lift-expr [x^ (signal-expr (name-expr x))]
+                         [y^ (signal-expr (name-expr y))]
+                         (call-expr + (name-expr x^) (name-expr y^)))))
+
+(component C7
+  (data-port x in #f)
+  (data-port y in #f)
+  (data-port z in #f)
+  (data-port u in #f)
+  (data-port v out #f)
+  (local-signal xy (lift-expr [x^ (signal-expr (name-expr x))]
+                              [y^ (signal-expr (name-expr y))]
+                              (call-expr * (name-expr x^) (name-expr y^))))
+  (local-signal zu (lift-expr [z^ (signal-expr (name-expr z))]
+                              [u^ (signal-expr (name-expr u))]
+                              (call-expr * (name-expr z^) (name-expr u^))))
+  (assignment (name-expr v)
+              (lift-expr [xy^ (signal-expr (name-expr xy))]
+                         [zu^ (signal-expr (name-expr zu))]
+                         (call-expr + (name-expr xy^) (name-expr zu^)))))
+
+(component C8
+  (parameter N #f)
+  (data-port x in #f)
+  (data-port y out #f)
+  (assignment (name-expr y)
+              (lift-expr [x^ (signal-expr (name-expr x))]
+                         (call-expr * x^ N))))
+(component C9
+  (data-port x in #f)
+  (data-port y out #f)
+  (instance c C8 10)
+  (assignment (field-expr (name-expr c) x C8) (signal-expr (name-expr x)))
+  (assignment (name-expr y) (signal-expr (field-expr (name-expr c) y C8))))
+
+(component C10
+  (data-port x0 in #f)
+  (data-port x1 in #f)
+  (data-port y out #f)
+  (instance c (multiplicity 2) C8 10)
+  (assignment (field-expr (indexed-expr (name-expr c) 0) x C8) (signal-expr (name-expr x0)))
+  (assignment (field-expr (indexed-expr (name-expr c) 1) x C8) (signal-expr (name-expr x1)))
+  (assignment (name-expr y) (lift-expr [y0 (signal-expr (field-expr (indexed-expr (name-expr c) 0) y C8))]
+                                       [y1 (signal-expr (field-expr (indexed-expr (name-expr c) 1) y C8))]
+                                       (call-expr + y0 y1))))
+
+(component C11
+  (data-port x in #f)
+  (data-port y out #f)
+  (assignment (name-expr y) (register-expr 0 (signal-expr x))))
+
 (define expander-tests
   (test-suite "Expander"
     (test-case "Interface with data ports is mapped to channel struct"
-      (interface I
-        (parameter N #f)
-        (data-port a in  #f)
-        (data-port b out #f))
-
-      (define i (I 10 20))
-      (check-eq? (I-a i) 10)
-      (check-eq? (I-b i) 20))
+      (define i (I0 10 20))
+      (check-eq? (I0-x i) 10)
+      (check-eq? (I0-y i) 20))
 
     (test-case "Component with data ports is mapped to channel struct"
-      (component I
-        (parameter N #f)
-        (data-port a in  #f)
-        (data-port b out #f)
-        (assignment (name-expr b) (signal-expr (name-expr a))))
-
-      (define i (I 10 20))
-      (check-eq? (I-a i) 10)
-      (check-eq? (I-b i) 20))
+      (define c (C0 10 20))
+      (check-eq? (C0-x c) 10)
+      (check-eq? (C0-y c) 20))
 
     (test-case "Interface with composite ports is mapped to channel struct"
-      (interface I
-        (parameter N #f)
-        (data-port a in  #f)
-        (data-port b out #f))
-      (interface J
-        (data-port c in  #f)
-        (composite-port d I))
-
-      (define j (J 10 (I 20 30)))
-      (check-eq? (J-c j) 10)
-      (check-eq? (I-a (J-d j)) 20)
-      (check-eq? (I-b (J-d j)) 30))
+      (define j (I1 (I0 10 20) 30))
+      (check-eq? (I0-x (I1-i j)) 10)
+      (check-eq? (I0-y (I1-i j)) 20)
+      (check-eq? (I1-z j) 30))
 
     (test-case "Component with composite ports is mapped to channel struct"
-      (interface I
-        (parameter N #f)
-        (data-port a in  #f)
-        (data-port b out #f))
-      (component J
-        (data-port c in  #f)
-        (composite-port d I)
-        (assignment (field-expr (name-expr d) b I) (signal-expr (field-expr (name-expr d) a I))))
-
-      (define j (J 10 (I 20 30)))
-      (check-eq? (J-c j) 10)
-      (check-eq? (I-a (J-d j)) 20)
-      (check-eq? (I-b (J-d j)) 30))
+      (define c (C1 (I0 10 20) 30))
+      (check-eq? (I0-x (C1-i c)) 10)
+      (check-eq? (I0-y (C1-i c)) 20)
+      (check-eq? (C1-z c) 30))
 
     (test-case "Can construct a channel for an interface with simple ports"
-      (interface I
-        (parameter N #f)
-        (data-port a in  #f)
-        (data-port b out #f))
-
-      (define i (make-channel-I 30))
-      (check-pred box? (I-a i))
-      (check-pred box? (I-b i)))
+      (define i (make-channel-I0 30))
+      (check-pred box? (I0-x i))
+      (check-pred box? (I0-y i)))
 
     (test-case "Can construct a channel for a component with simple ports"
-      (component I
-        (parameter N #f)
-        (data-port a in  #f)
-        (data-port b out #f)
-        (assignment (name-expr b) (signal-expr (name-expr a))))
-
-      (define i (make-instance-I 30))
-      (check-pred box? (I-a i))
-      (check-pred box? (I-b i)))
+      (define c (make-instance-C0 30))
+      (check-pred box? (C0-x c))
+      (check-pred box? (C0-y c)))
 
     (test-case "Can construct a channel for an interface with composite ports and no parameters"
-      (interface I
-        (data-port a in  #f)
-        (data-port b out #f))
-      (interface J
-        (data-port c in  #f)
-        (composite-port d I)
-        (data-port e out #f))
-      (interface K
-        (data-port f in  #f)
-        (composite-port g J)
-        (data-port h out #f))
+      (define i3 (make-channel-I3))
+      (check-pred box? (I3-z i3))
+      (check-pred I2? (I3-i i3))
+      (check-pred box? (I2-x (I3-i i3)))
+      (check-pred box? (I2-y (I3-i i3)))
+      (check-pred box? (I3-u i3))
 
-      (define j (make-channel-J))
-      (check-pred box? (J-c j))
-      (check-pred I? (J-d j))
-      (check-pred box? (I-a (J-d j)))
-      (check-pred box? (I-b (J-d j)))
-      (check-pred box? (J-e j))
-
-      (define k (make-channel-K))
-      (check-pred box? (K-f k))
-      (check-pred J? (K-g k))
-      (check-pred box? (J-c (K-g k)))
-      (check-pred box? (I-a (J-d (K-g k))))
-      (check-pred box? (I-b (J-d (K-g k))))
-      (check-pred box? (J-e (K-g k)))
-      (check-pred box? (K-h k)))
+      (define i4 (make-channel-I4))
+      (check-pred box? (I4-v i4))
+      (check-pred I3? (I4-j i4))
+      (check-pred box? (I3-z (I4-j i4)))
+      (check-pred box? (I2-x (I3-i (I4-j i4))))
+      (check-pred box? (I2-y (I3-i (I4-j i4))))
+      (check-pred box? (I3-u (I4-j i4)))
+      (check-pred box? (I4-w i4)))
 
     (test-case "Can construct a channel for a component with composite ports and no parameters"
-      (interface I
-        (data-port a in  #f)
-        (data-port b out #f))
-      (interface J
-        (data-port c in  #f)
-        (composite-port d I)
-        (data-port e out #f))
-      (component K
-        (data-port f in  #f)
-        (composite-port g J)
-        (data-port h out #f)
-        (assignment (name-expr h) (signal-expr (name-expr f))))
-
-      (define k (make-instance-K))
-      (check-pred box? (K-f k))
-      (check-pred J? (K-g k))
-      (check-pred box? (J-c (K-g k)))
-      (check-pred box? (I-a (J-d (K-g k))))
-      (check-pred box? (I-b (J-d (K-g k))))
-      (check-pred box? (J-e (K-g k)))
-      (check-pred box? (K-h k)))
+      (define c (make-instance-C2))
+      (check-pred box? (C2-v c))
+      (check-pred I3? (C2-j c))
+      (check-pred box? (I3-z (C2-j c)))
+      (check-pred box? (I2-x (I3-i (C2-j c))))
+      (check-pred box? (I2-y (I3-i (C2-j c))))
+      (check-pred box? (I3-u (C2-j c)))
+      (check-pred box? (C2-w c)))
 
     (test-case "Can construct a channel for an interface with a vector port"
-      (interface I
-        (data-port a in  #f)
-        (data-port b out #f))
-      (interface J
-        (composite-port c (multiplicity 3) I))
-
-      (define j (make-channel-J))
-      (check-pred vector? (J-c j))
-      (check-eq? (vector-length (J-c j)) 3)
-      (for ([i (range 3)])
-        (check-pred I? (vector-ref (J-c j) i))))
+      (define j (make-channel-I5))
+      (check-pred vector? (I5-i j))
+      (check-eq? (vector-length (I5-i j)) 3)
+      (for ([n (range 3)])
+        (check-pred I2? (vector-ref (I5-i j) n))))
 
     (test-case "Can construct a channel for an interface with arguments"
-      (interface I
-        (data-port a in  #f)
-        (data-port b out #f))
-      (interface J
-        (parameter N #f)
-        (composite-port c (multiplicity (name-expr N)) I))
-
-      (define j (make-channel-J 3))
-      (check-pred vector? (J-c j))
-      (check-eq? (vector-length (J-c j)) 3)
-      (for ([i (range 3)])
-        (check-pred I? (vector-ref (J-c j) i))))
+      (define j (make-channel-I6 5))
+      (check-pred vector? (I6-i j))
+      (check-eq? (vector-length (I6-i j)) 5)
+      (for ([n (range 5)])
+        (check-pred I2? (vector-ref (I6-i j) n))))
 
     (test-case "Can construct a channel containing a composite port with arguments"
-      (interface I
-        (data-port a in  #f)
-        (data-port b out #f))
-      (interface J
-        (parameter N #f)
-        (composite-port c (multiplicity (name-expr N)) I))
-      (interface K
-        (parameter M #f)
-        (composite-port d J (name-expr M)))
-
-      (define k (make-channel-K 3))
-      (check-pred vector? (J-c (K-d k)))
-      (check-eq? (vector-length (J-c (K-d k))) 3)
-      (for ([i (range 3)])
-        (check-pred I? (vector-ref (J-c (K-d k)) i))))
+      (define k (make-channel-I7 3))
+      (check-pred vector? (I6-i (I7-j k)))
+      (check-eq? (vector-length (I6-i (I7-j k))) 3)
+      (for ([n (range 3)])
+        (check-pred I2? (vector-ref (I6-i (I7-j k)) n))))
 
     (test-case "Can assign a simple port to another simple port"
-      (component C
-        (data-port a in #f)
-        (data-port b out #f)
-        (assignment (name-expr b) (signal-expr (name-expr a))))
-
-      (define c (make-instance-C))
-      (define c-a (static 23))
-      (set-box! (C-a c) c-a)
-
-      (define c-b (unbox (C-b c)))
-      (check-equal? (signal-take c-b 5) (signal-take c-a 5)))
+      (define c (make-instance-C0 #f))
+      (define x (static 23))
+      (port-set! (c C0-x) x)
+      (check-sig-equal? (port-ref c C0-y) x 5))
 
     (test-case "Can access simple ports in a composite port"
-      (interface I
-        (data-port a in  #f)
-        (data-port b out #f))
-      (component J
-        (composite-port c I)
-        (assignment (field-expr (name-expr c) b I)
-                    (signal-expr (field-expr (name-expr c) a I))))
-
-      (define j (make-instance-J))
-      (define j-c-a (static 23))
-      (set-box! (I-a (J-c j)) j-c-a)
-
-      (define j-c-b (unbox (I-b (J-c j))))
-      (check-equal? (signal-take j-c-b 5) (signal-take j-c-a 5)))
+      (define c (make-instance-C3))
+      (define x (static 23))
+      (port-set! (c C3-i I2-x) x)
+      (check-sig-equal? (port-ref c C3-i I2-y) x 5))
 
     (test-case "Can access simple ports in a vector composite port with static indices"
-      (interface I
-        (data-port a in  #f)
-        (data-port b out #f))
-      (component J
-        (composite-port c (multiplicity 3) I)
-        (assignment (field-expr (indexed-expr (name-expr c) (literal-expr 0)) b I)
-                    (signal-expr (field-expr (indexed-expr (name-expr c) (literal-expr 0)) a I)))
-        (assignment (field-expr (indexed-expr (name-expr c) (literal-expr 1)) b I)
-                    (signal-expr (field-expr (indexed-expr (name-expr c) (literal-expr 1)) a I)))
-        (assignment (field-expr (indexed-expr (name-expr c) (literal-expr 2)) b I)
-                    (signal-expr (field-expr (indexed-expr (name-expr c) (literal-expr 2)) a I))))
-
-      (define j (make-instance-J))
-      (define j-c-0-a (static 10))
-      (define j-c-1-a (static 20))
-      (define j-c-2-a (static 30))
-      (set-box! (I-a (vector-ref (J-c j) 0)) j-c-0-a)
-      (set-box! (I-a (vector-ref (J-c j) 1)) j-c-1-a)
-      (set-box! (I-a (vector-ref (J-c j) 2)) j-c-2-a)
-
-      (define j-c-0-b (unbox (I-b (vector-ref (J-c j) 0))))
-      (define j-c-1-b (unbox (I-b (vector-ref (J-c j) 1))))
-      (define j-c-2-b (unbox (I-b (vector-ref (J-c j) 2))))
-      (check-equal? (signal-take j-c-0-b 5) (signal-take j-c-0-a 5))
-      (check-equal? (signal-take j-c-1-b 5) (signal-take j-c-1-a 5))
-      (check-equal? (signal-take j-c-2-b 5) (signal-take j-c-2-a 5)))
+      (define c (make-instance-C4))
+      (define x0 (static 10))
+      (define x1 (static 20))
+      (define x2 (static 30))
+      (port-set! (c C4-i 0 I2-x) x0)
+      (port-set! (c C4-i 1 I2-x) x1)
+      (port-set! (c C4-i 2 I2-x) x2)
+      (check-sig-equal? (port-ref c C4-i 0 I2-x) x0 5)
+      (check-sig-equal? (port-ref c C4-i 1 I2-x) x1 5)
+      (check-sig-equal? (port-ref c C4-i 2 I2-x) x2 5))
 
     (test-case "Can access simple ports in a vector composite port with dynamic indices"
-      (interface I
-        (data-port a in  #f))
-      (component J
-        (composite-port b (multiplicity 3) I)
-        (data-port c in #f)
-        (data-port d out #f)
-        (assignment (name-expr d)
-                    (lift-expr [c^ (signal-expr (name-expr c))]
-                               (signal-expr (field-expr (indexed-expr (name-expr b) c^) a I)))))
-
-      (define j (make-instance-J))
-      (define j-b-0-a (static 10))
-      (define j-b-1-a (static 20))
-      (define j-b-2-a (static 30))
-      (set-box! (I-a (vector-ref (J-b j) 0)) j-b-0-a)
-      (set-box! (I-a (vector-ref (J-b j) 1)) j-b-1-a)
-      (set-box! (I-a (vector-ref (J-b j) 2)) j-b-2-a)
-
-      (define j-c (list->signal (list 0 1 2 1 0 2)))
-      (set-box! (J-c j) j-c)
-
-      (define j-d-lst (list 10 20 30 20 10 30))
-      (define j-d (unbox (J-d j)))
-      (check-equal? (signal-take j-d (length j-d-lst)) j-d-lst))
+      (define c (make-instance-C5))
+      (define x0 (static 10))
+      (define x1 (static 20))
+      (define x2 (static 30))
+      (define y (list->signal (list 0 1 2 1 0 2)))
+      (port-set! (c C5-i 0 I8-x) x0)
+      (port-set! (c C5-i 1 I8-x) x1)
+      (port-set! (c C5-i 2 I8-x) x2)
+      (port-set! (c C5-y)        y)
+      (define z (list->signal (list 10 20 30 20 10 30)))
+      (check-sig-equal? (port-ref c C5-z) z 5))
 
     (test-case "Can perform an operation between signals"
-      (component C
-        (data-port a in #f)
-        (data-port b in #f)
-        (data-port c out #f)
-        (assignment (name-expr c)
-                    (lift-expr [a^ (signal-expr (name-expr a))]
-                               [b^ (signal-expr (name-expr b))]
-                               (call-expr + a^ b^))))
-
-      (define la (range 1  5  1))
-      (define lb (range 10 50 10))
-
-      (define c (make-instance-C))
-      (define c-a (list->signal la))
-      (define c-b (list->signal lb))
-      (set-box! (C-a c) c-a)
-      (set-box! (C-b c) c-b)
-
-      (define c-c (unbox (C-c c)))
-      (check-equal? (signal-take c-c (length la)) (map + la lb)))
+      (define c (make-instance-C6))
+      (define x (list->signal (range 1  5  1)))
+      (define y (list->signal (range 10 50 10)))
+      (port-set! (c C6-x) x)
+      (port-set! (c C6-y) y)
+      (check-sig-equal? (port-ref c C6-z) (.+ x y) 5))
 
     (test-case "Can use local signals"
-      (component C
-        (data-port a in #f)
-        (data-port b in #f)
-        (data-port c in #f)
-        (data-port d in #f)
-        (data-port e out #f)
-        (local-signal ab (lift-expr [a^ (signal-expr (name-expr a))]
-                                    [b^ (signal-expr (name-expr b))]
-                                    (call-expr * a^ b^)))
-        (local-signal cd (lift-expr [c^ (signal-expr (name-expr c))]
-                                    [d^ (signal-expr (name-expr d))]
-                                    (call-expr * c^ d^)))
-        (assignment (name-expr e)
-                    (lift-expr [ab^ (signal-expr (name-expr ab))]
-                               [cd^ (signal-expr (name-expr cd))]
-                               (call-expr + ab^ cd^))))
-
-      (define c (make-instance-C))
-      (define c-a (list->signal (list 10 20 30 40 50)))
-      (define c-b (static 2))
-      (define c-c (list->signal (list 1 2 3 4 5)))
-      (define c-d (static 3))
-
-      (set-box! (C-a c) c-a)
-      (set-box! (C-b c) c-b)
-      (set-box! (C-c c) c-c)
-      (set-box! (C-d c) c-d)
-      (define c-e (unbox (C-e c)))
-
-      (check-equal? (signal-take c-e 5) (list 23 46 69 92 115)))
+      (define c (make-instance-C7))
+      (define x (list->signal (list 10 20 30 40 50)))
+      (define y (static 2))
+      (define z (list->signal (list 1 2 3 4 5)))
+      (define u (static 3))
+      (port-set! (c C7-x) x)
+      (port-set! (c C7-y) y)
+      (port-set! (c C7-z) z)
+      (port-set! (c C7-u) u)
+      (check-sig-equal? (port-ref c C7-v) (.+ (.* x y) (.* z u)) 5))
 
     (test-case "Can instantiate a component"
-      (component C
-        (parameter N #f)
-        (data-port a in #f)
-        (data-port b out #f)
-        (assignment (name-expr b)
-                    (lift-expr [a^ (signal-expr (name-expr a))]
-                               (call-expr * a^ N))))
-      (component D
-        (data-port x in #f)
-        (data-port y out #f)
-        (instance c C 10)
-        (assignment (field-expr (name-expr c) a C) (signal-expr (name-expr x)))
-        (assignment (name-expr y) (signal-expr (field-expr (name-expr c) b C))))
-
-      (define d (make-instance-D))
-      (define d-x (list->signal (list 10 20 30 40 50)))
-      (set-box! (D-x d) d-x)
-      (define d-y (unbox (D-y d)))
-
-      (check-equal? (signal-take d-y 5) (list 100 200 300 400 500)))
+      (define c (make-instance-C9))
+      (define x (list->signal (list 10 20 30 40 50)))
+      (port-set! (c C9-x) x)
+      (check-sig-equal? (port-ref c C9-y) (.* x (static 10)) 5))
 
     (test-case "Can instantiate a multiple component"
-      (component C
-        (parameter N #f)
-        (data-port a in #f)
-        (data-port b out #f)
-        (assignment (name-expr b)
-                    (lift-expr [a^ (signal-expr (name-expr a))]
-                               (call-expr * a^ N))))
-      (component D
-        (data-port x in #f)
-        (data-port y in #f)
-        (data-port z out #f)
-        (instance c (multiplicity 2) C 10)
-        (assignment (field-expr (indexed-expr (name-expr c) 0) a C) (signal-expr (name-expr x)))
-        (assignment (field-expr (indexed-expr (name-expr c) 1) a C) (signal-expr (name-expr y)))
-        (assignment (name-expr z) (lift-expr [b0 (signal-expr (field-expr (indexed-expr (name-expr c) 0) b C))]
-                                             [b1 (signal-expr (field-expr (indexed-expr (name-expr c) 1) b C))]
-                                             (call-expr + b0 b1))))
-      (define d (make-instance-D))
-      (define d-x (list->signal (list 10 20 30 40 50)))
-      (define d-y (list->signal (list 1 2 3 4 5)))
-      (set-box! (D-x d) d-x)
-      (set-box! (D-y d) d-y)
-      (define d-z (unbox (D-z d)))
-
-      (check-equal? (signal-take d-z 5) (list 110 220 330 440 550)))
+      (define c (make-instance-C10))
+      (define x0 (list->signal (list 10 20 30 40 50)))
+      (define x1 (list->signal (list 1 2 3 4 5)))
+      (port-set! (c C10-x0) x0)
+      (port-set! (c C10-x1) x1)
+      (check-sig-equal? (port-ref c C10-y) (.* (.+ x0 x1) (static 10)) 5))
 
     (test-case "Can register a signal"
-      (component C19
-        (data-port x in #f)
-        (data-port y out #f)
-        (assignment (name-expr y) (register-expr 0 (signal-expr x))))
-
-      (define c (make-instance-C19))
+      (define c (make-instance-C11))
       (define x (list->signal (list 10 20  30 40 50)))
-      (port-set! (c C19-x) x)
-      (check-sig-equal? (port-ref c C19-y) (register 0 x) 6))))
+      (port-set! (c C11-x) x)
+      (check-sig-equal? (port-ref c C11-y) (register 0 x) 6))))

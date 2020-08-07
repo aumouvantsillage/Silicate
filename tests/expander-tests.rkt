@@ -136,7 +136,29 @@
 (component C11
   (data-port x in #f)
   (data-port y out #f)
-  (assignment (name-expr y) (register-expr 0 (signal-expr x))))
+  (assignment (name-expr y) (register-expr (literal-expr 0) (signal-expr (name-expr x)))))
+
+(component C12
+  (data-port x in #f)
+  (data-port y in #f)
+  (data-port z out #f)
+  (assignment (name-expr z) (register-expr (literal-expr 0) (when-clause (signal-expr (name-expr x)))
+                                           (signal-expr (name-expr y)))))
+
+(component C13
+  (data-port x in #f)
+  (data-port y in #f)
+  (data-port z out #f)
+  (assignment (name-expr z) (register-expr (literal-expr 0)
+                                           (signal-expr (name-expr y)) (when-clause (signal-expr (name-expr x))))))
+
+(component C14
+  (data-port x in #f)
+  (data-port y in #f)
+  (data-port z in #f)
+  (data-port u out #f)
+  (assignment (name-expr u) (register-expr (literal-expr 0) (when-clause (signal-expr (name-expr x)))
+                                           (signal-expr (name-expr z)) (when-clause (signal-expr (name-expr y))))))
 
 (define expander-tests
   (test-suite "Expander"
@@ -295,4 +317,30 @@
       (define c (make-instance-C11))
       (define x (list->signal (list 10 20  30 40 50)))
       (port-set! (c C11-x) x)
-      (check-sig-equal? (port-ref c C11-y) (register 0 x) 6))))
+      (check-sig-equal? (port-ref c C11-y) (register 0 x) 6))
+
+    (test-case "Can register a signal with reset"
+      (define c (make-instance-C12))
+      (define x (list->signal (list #f #f  #f #t #f)))
+      (define y (list->signal (list 10 20  30 40 50)))
+      (port-set! (c C12-x) x)
+      (port-set! (c C12-y) y)
+      (check-sig-equal? (port-ref c C12-z) (register/r 0 x y) 6))
+
+    (test-case "Can register a signal with enable"
+      (define c (make-instance-C13))
+      (define x (list->signal (list #f #t  #f #t #f)))
+      (define y (list->signal (list 10 20  30 40 50)))
+      (port-set! (c C13-x) x)
+      (port-set! (c C13-y) y)
+      (check-sig-equal? (port-ref c C13-z) (register/e 0 x y) 6))
+
+    (test-case "Can register a signal with reset and enable"
+      (define c (make-instance-C14))
+      (define x (list->signal (list #f #t  #f #t #f)))
+      (define y (list->signal (list #f #f  #t #f #f)))
+      (define z (list->signal (list 10 20  30 40 50)))
+      (port-set! (c C14-x) x)
+      (port-set! (c C14-y) y)
+      (port-set! (c C14-z) z)
+      (check-sig-equal? (port-ref c C14-u) (register/re 0 x y z) 6))))

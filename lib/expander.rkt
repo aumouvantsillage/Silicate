@@ -195,8 +195,15 @@
   (fn-name arg ...))
 
 (define-syntax-parser register-expr
-  [(register-expr a b)
-   #'(register a b)])
+  #:datum-literals [when-clause]
+  [(register-expr i d)
+   #'(register i d)]
+  [(register-expr i (when-clause r) d)
+   #'(register/r i r d)]
+  [(register-expr i d (when-clause e))
+   #'(register/e i e d)]
+  [(register-expr i (when-clause r) d (when-clause e))
+   #'(register/re i r e d)])
 
 ; A signal expression is a wrapper element added by the typechecker
 ; to identify an expression that refers to a port or local signal

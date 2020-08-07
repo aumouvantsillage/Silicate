@@ -1,2 +1,3 @@
 #lang info
-(define name "silicate")
+(define collection "silicate")
+(define deps '("brag"))

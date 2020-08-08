@@ -150,24 +150,24 @@
       (assignment (name-expr y) (register-expr (literal-expr 0) (name-expr x))))
 
     (component C20
-      (data-port x in #f)
-      (data-port y in #f)
-      (data-port z out #f)
+      (data-port x in (name-expr integer))
+      (data-port y in (name-expr integer))
+      (data-port z out (name-expr integer))
       (assignment (name-expr z) (register-expr (literal-expr 0) (when-clause (name-expr x))
                                                (name-expr y))))
 
     (component C21
-      (data-port x in #f)
-      (data-port y in #f)
-      (data-port z out #f)
+      (data-port x in (name-expr integer))
+      (data-port y in (name-expr integer))
+      (data-port z out (name-expr integer))
       (assignment (name-expr z) (register-expr (literal-expr 0)
                                                (name-expr y) (when-clause (name-expr x)))))
 
     (component C22
-      (data-port x in #f)
-      (data-port y in #f)
-      (data-port z in #f)
-      (data-port u out #f)
+      (data-port x in (name-expr integer))
+      (data-port y in (name-expr integer))
+      (data-port z in (name-expr integer))
+      (data-port u out (name-expr integer))
       (assignment (name-expr u) (register-expr (literal-expr 0) (when-clause (name-expr x))
                                                (name-expr z) (when-clause (name-expr y)))))))
 

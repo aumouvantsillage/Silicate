@@ -14,6 +14,7 @@
             "constant" "instance" "let"
             "or" "and" "not" ">=" "<=" "==" "/="
             "if" "then" "else"
+            "register" "when"
             (char-set ".:,()[]=+-*/<>"))
        (token lexeme (string->symbol lexeme))]
       [(:seq alphabetic (:* (:or alphabetic numeric)))

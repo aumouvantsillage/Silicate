@@ -144,3 +144,31 @@ component C18
   port z : out integer
   z = if x > y then x else y
 end
+
+component C19
+  port x : in integer
+  port y : out integer
+  y = register 0, x
+end
+
+component C20
+  port x : in integer
+  port y : in integer
+  port z : out integer
+  z = register 0 when x, y
+end
+
+component C21
+  port x : in integer
+  port y : in integer
+  port z : out integer
+  z = register 0, y when x
+end
+
+component C22
+  port x : in integer
+  port y : in integer
+  port z : in integer
+  port u : out integer
+  u = register 0 when x, z when y
+end

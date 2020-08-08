@@ -151,4 +151,36 @@
       (define y (list->signal (list 1  200 300 4 5)))
       (port-set! (c C18-x) x)
       (port-set! (c C18-y) y)
-      (check-sig-equal? (port-ref c C18-z) ((lift max) x y) 5))))
+      (check-sig-equal? (port-ref c C18-z) ((lift max) x y) 5))
+
+    (test-case "Can register a signal"
+      (define c (make-instance-C19))
+      (define x (list->signal (list 10 20  30 40 50)))
+      (port-set! (c C19-x) x)
+      (check-sig-equal? (port-ref c C19-y) (register 0 x) 6))
+
+    (test-case "Can register a signal with reset"
+      (define c (make-instance-C20))
+      (define x (list->signal (list #f #f  #f #t #f)))
+      (define y (list->signal (list 10 20  30 40 50)))
+      (port-set! (c C20-x) x)
+      (port-set! (c C20-y) y)
+      (check-sig-equal? (port-ref c C20-z) (register/r 0 x y) 6))
+
+    (test-case "Can register a signal with enable"
+      (define c (make-instance-C21))
+      (define x (list->signal (list #f #t  #f #t #f)))
+      (define y (list->signal (list 10 20  30 40 50)))
+      (port-set! (c C21-x) x)
+      (port-set! (c C21-y) y)
+      (check-sig-equal? (port-ref c C21-z) (register/e 0 x y) 6))
+
+    (test-case "Can register a signal with reset and enable"
+      (define c (make-instance-C22))
+      (define x (list->signal (list #f #t  #f #t #f)))
+      (define y (list->signal (list #f #f  #t #f #f)))
+      (define z (list->signal (list 10 20  30 40 50)))
+      (port-set! (c C22-x) x)
+      (port-set! (c C22-y) y)
+      (port-set! (c C22-z) z)
+      (check-sig-equal? (port-ref c C22-u) (register/re 0 x y z) 6))))

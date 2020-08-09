@@ -45,10 +45,10 @@
   (component stx (make-design-unit-local-scope stx)))
 
 (struct signal metadata ())
-(struct data-port signal ())
+(struct data-port signal (mode))
 (struct local-signal signal ())
 
 (struct parameter metadata ())
-(struct composite-port metadata ())
+(struct composite-port metadata (flip?))
 (struct constant metadata ())
 (struct instance metadata ())

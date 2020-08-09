@@ -20,7 +20,6 @@
 
   (define (typecheck stx)
     (with-lookup-cache
-      ; TODO inline composite ports
       (syntax-parse stx
         [:stx/constant      (typecheck-constant stx #'name (typecheck #'expr))]
         [:stx/local-signal  (typecheck-local-signal stx #'name (typecheck #'expr))]
@@ -45,7 +44,7 @@
       [:stx/field-expr
        ; For a field expression, resolve the left-hand side first.
        (match (resolve #'expr)
-         [(meta/composite-port s)
+         [(meta/composite-port s _)
           ; If the lhs maps to a composite port, look up the given field name
           ; in the target interface.
           (define/syntax-parse :stx/composite-port s)
@@ -85,11 +84,48 @@
       (local-signal #,name #,(typecheck-assigned-expr expr))))
 
   (define (typecheck-assignment stx target expr)
-    ; TODO check port mode: out flip/in inst/in inst/flip/out
+    (typecheck-assignment-target target)
     ; TODO support assignment from composite to composite.
     ; TODO check circular dependencies.
     (quasisyntax/loc stx
       (assignment #,target #,(typecheck-assigned-expr expr))))
+
+  (define (typecheck-assignment-target stx)
+    (define (check p name thunk)
+      (unless (meta/data-port? p)
+        (raise-syntax-error #f "Not a port" name))
+      (unless (thunk p)
+        (raise-syntax-error #f "Port cannot be assigned" name)))
+
+    (syntax-parse stx
+      [:stx/name-expr
+       (check (lookup #'name)
+              #'name
+              (λ (p) (eq? 'out (meta/data-port-mode p))))]
+
+      [:stx/field-expr
+       ; For a field expression, resolve the left-hand side first.
+       (match (resolve #'expr)
+         [(meta/composite-port s meta/flip?)
+          ; If the lhs maps to a composite port, look up the given field name
+          ; in the target interface.
+          ; TODO tests
+          (define/syntax-parse :stx/composite-port s)
+          (check (meta/design-unit-ref (lookup #'intf-name meta/interface?) #'field-name)
+                 #'field-name
+                 (λ (p) (xor meta/flip? (eq? 'out (meta/data-port-mode p)))))]
+
+         [(meta/instance s)
+          ; If the lhs maps to an instance, look up the given field name
+          ; in the target component.
+          ; TODO tests
+          (define/syntax-parse :stx/instance s)
+          (check (meta/design-unit-ref (lookup #'comp-name meta/component?) #'field-name)
+                 #'field-name
+                 (λ (p) (eq? 'in (meta/data-port-mode p))))])]
+
+      [_
+       (raise-syntax-error #f "Expression not suitable as assignment target" stx)]))
 
   (define (typecheck-assigned-expr stx)
     (syntax-parse (lift-if-needed stx)
@@ -148,7 +184,7 @@
 
   (define (typecheck-field-expr stx expr field-name)
     (match (resolve expr)
-      [(meta/composite-port s)
+      [(meta/composite-port s _)
        (define/syntax-parse :stx/composite-port s)
        ; Check that a port with that name exists in the interface.
        (meta/design-unit-ref (lookup #'intf-name meta/interface?) field-name)

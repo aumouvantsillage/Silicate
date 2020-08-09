@@ -118,6 +118,10 @@
       (composite-port i splice I0)
       (assignment (name-expr y) (name-expr x)))
 
+    (component C24
+      (composite-port i splice flip I0)
+      (assignment (name-expr x) (name-expr y)))
+
     (component C15
       (composite-port j splice I1)
       (assignment (field-expr (indexed-expr (name-expr i) (literal-expr 0)) y)
@@ -128,12 +132,27 @@
     (interface I3
       (composite-port i splice I0))
 
+    (interface I4
+      (composite-port i splice flip I0))
+
     (component C16
       (composite-port j I3)
       (assignment (field-expr (name-expr j) y) (field-expr (name-expr j) x)))
 
     (component C17
       (composite-port j splice I3)
+      (assignment (name-expr y) (name-expr x)))
+
+    (component C23
+      (composite-port j splice flip I3)
+      (assignment (name-expr x) (name-expr y)))
+
+    (component C25
+      (composite-port j splice I4)
+      (assignment (name-expr x) (name-expr y)))
+
+    (component C26
+      (composite-port j splice flip I4)
       (assignment (name-expr y) (name-expr x)))
 
     (component C18
@@ -286,6 +305,12 @@
       (port-set! (c C14-x) x)
       (check-sig-equal? (port-ref c C14-y) x 5))
 
+    (test-case "Can resolve ports in a spliced flipped interface"
+      (define c (make-instance-C24))
+      (define y (static 10))
+      (port-set! (c C24-y) y)
+      (check-sig-equal? (port-ref c C24-x) y 5))
+
     (test-case "Can resolve ports in a hierarchy from a spliced interface"
       (define c (make-instance-C15))
       (define x0 (static 10))
@@ -306,6 +331,24 @@
       (define x (static 10))
       (port-set! (c C17-x) x)
       (check-sig-equal? (port-ref c C17-y) x 5))
+
+    (test-case "Can resolve ports in a doubly spliced flipped-last composite port"
+      (define c (make-instance-C23))
+      (define y (static 10))
+      (port-set! (c C23-y) y)
+      (check-sig-equal? (port-ref c C23-x) y 5))
+
+    (test-case "Can resolve ports in a doubly spliced flipped-first composite port"
+      (define c (make-instance-C25))
+      (define y (static 10))
+      (port-set! (c C25-y) y)
+      (check-sig-equal? (port-ref c C25-x) y 5))
+
+    (test-case "Can resolve ports in a doubly spliced doubly-flipped composite port"
+      (define c (make-instance-C26))
+      (define x (static 10))
+      (port-set! (c C26-x) x)
+      (check-sig-equal? (port-ref c C26-y) x 5))
 
     (test-case "Can compute a conditional signal"
       (define c (make-instance-C18))

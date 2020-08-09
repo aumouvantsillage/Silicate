@@ -45,7 +45,7 @@
   #:datum-literals [composite-port multiplicity]
   (pattern (composite-port name (~optional (multiplicity mult)) mode:composite-mode ... intf-name arg ...)
     #:attr splice? (member 'splice (syntax->datum #'(mode ...)))
-    #:attr flip?   (member 'splice (syntax->datum #'(mode ...)))))
+    #:attr flip?   (member 'flip   (syntax->datum #'(mode ...)))))
 
 (define-syntax-class composite-mode
   (pattern (~datum flip))
@@ -95,7 +95,7 @@
 (define-syntax-class when-clause
   #:datum-literals [when-clause]
   (pattern (when-clause expr)))
-  
+
 (define-syntax-class call-expr
   #:datum-literals [or-expr and-expr rel-expr add-expr mult-expr if-expr call-expr prefix-expr]
   (pattern ((~or* or-expr and-expr rel-expr add-expr mult-expr) left fn-name right)
